@@ -1,7 +1,7 @@
-From fbe1462290e2aa33a8fa36ac18d0b1a442246f9d Mon Sep 17 00:00:00 2001
+From 7ba74b3750312f219be4fdbb6c50f087cc45dfcb Mon Sep 17 00:00:00 2001
 From: Armbian Builder <support@armbian.com>
-Date: Thu, 18 Dec 2025 05:05:25 +0000
-Subject: [PATCH] Add Allwinner Device a733
+Date: Thu, 18 Dec 2025 16:33:56 +0000
+Subject: [PATCH] Add Allwinner Device a733 hash 86c628c575
 
 ---
  Makefile                                      |    4 +
