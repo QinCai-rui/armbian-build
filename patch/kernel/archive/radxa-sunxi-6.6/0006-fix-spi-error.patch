@@ -1,0 +1,19 @@
+From 899c1efe9db90fbdfedded3b3c1bd1a56520a0e4 Mon Sep 17 00:00:00 2001
+From: Hsun Lai <i@chainsx.cn>
+Date: Sun, 7 Dec 2025 02:18:33 +0800
+Subject: [PATCH] fix
+
+---
+diff --git a/bsp/drivers/spi/spi-sunxi.c b/bsp/drivers/spi/spi-sunxi.c
+index d6b87b3ba4..85d2acc321 100644
+--- a/bsp/drivers/spi/spi-sunxi.c
++++ b/bsp/drivers/spi/spi-sunxi.c
+@@ -2161,7 +2161,7 @@ int sunxi_spi_sync_atomic(struct spi_device *spi, struct spi_message *message)
+ out:
+ 	message->status = ret;
+ 	ctlr->cur_msg = NULL;
+-	ctlr->cur_msg_prepared = false;
++	ctlr->cur_msg_mapped = false;
+ 
+ 	return ret;
+ }

@@ -1,0 +1,22 @@
+From f5fedc87fdf9f9348908caabf5f53ad62dca659d Mon Sep 17 00:00:00 2001
+From: Hsun Lai <i@chainsx.cn>
+Date: Sat, 13 Dec 2025 22:52:23 +0800
+Subject: [PATCH] fix
+
+---
+ arch/arm64/boot/dts/allwinner/sun60iw2p1.dtsi | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/arch/arm64/boot/dts/allwinner/sun60iw2p1.dtsi b/arch/arm64/boot/dts/allwinner/sun60iw2p1.dtsi
+index 544a97b686..741554eaa4 100644
+--- a/arch/arm64/boot/dts/allwinner/sun60iw2p1.dtsi
++++ b/arch/arm64/boot/dts/allwinner/sun60iw2p1.dtsi
+@@ -3486,7 +3486,7 @@
+ 			phy-handle = <&gmac0_phy0>;
+ 			status = "disabled";
+ 
+-			aw,rgmii-clk-ext;
++			//aw,rgmii-clk-ext;
+ 			snps,fixed-burst;
+ 			snps,en-tx-lpi-clockgating;
+ 			snps,axi-config = <&gmac_stmmac_axi_setup>;
