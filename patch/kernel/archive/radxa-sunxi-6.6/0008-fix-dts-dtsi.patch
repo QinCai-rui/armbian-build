@@ -1,0 +1,209 @@
+From ed43fa081b6a3b38cca85ef790bddccb43cb400a Mon Sep 17 00:00:00 2001
+From: Hsun Lai <i@chainsx.cn>
+Date: Sun, 14 Dec 2025 00:51:56 +0800
+Subject: [PATCH] fix
+
+---
+
+diff --git a/arch/arm64/boot/dts/allwinner/sun60iw2p1-cpu-vf.dtsi b/arch/arm64/boot/dts/allwinner/sun60iw2p1-cpu-vf.dtsi
+index 023105b45d..55188c60d4 100644
+--- a/arch/arm64/boot/dts/allwinner/sun60iw2p1-cpu-vf.dtsi
++++ b/arch/arm64/boot/dts/allwinner/sun60iw2p1-cpu-vf.dtsi
+@@ -2047,10 +2047,6 @@
+ 			opp-microvolt-vf0205 = <800000>;
+ 			opp-microvolt-vf0206 = <800000>;
+ 			opp-microvolt-vf0300 = <800000>;
+-			opp-microvolt-vf0400 = <800000>;
+-			opp-microvolt-vf0401 = <800000>;
+-			opp-microvolt-vf0500 = <800000>;
+-			opp-microvolt-vf0501 = <800000>;
+ 			opp-microvolt-26m-vf0000 = <800000>;
+ 			opp-microvolt-26m-vf0200 = <800000>;
+ 			opp-microvolt-26m-vf0201 = <800000>;
+@@ -2060,10 +2056,6 @@
+ 			opp-microvolt-26m-vf0205 = <800000>;
+ 			opp-microvolt-26m-vf0206 = <800000>;
+ 			opp-microvolt-26m-vf0300 = <800000>;
+-			opp-microvolt-26m-vf0400 = <800000>;
+-			opp-microvolt-26m-vf0401 = <800000>;
+-			opp-microvolt-26m-vf0500 = <800000>;
+-			opp-microvolt-26m-vf0501 = <800000>;
+ 		};
+ 
+ 		npu_opp_table_852: opp-852 {
+@@ -2074,44 +2066,30 @@
+ 			opp-microvolt-vf0202 = <880000>;
+ 			opp-microvolt-vf0203 = <880000>;
+ 			opp-microvolt-vf0204 = <880000>;
+-			opp-microvolt-vf0400 = <800000>;
+-			opp-microvolt-vf0401 = <820000>;
+-			opp-microvolt-vf0500 = <800000>;
+-			opp-microvolt-vf0501 = <800000>;
+ 			opp-microvolt-26m-vf0000 = <800000>;
+ 			opp-microvolt-26m-vf0200 = <800000>;
+ 			opp-microvolt-26m-vf0201 = <800000>;
+ 			opp-microvolt-26m-vf0202 = <880000>;
+ 			opp-microvolt-26m-vf0203 = <880000>;
+ 			opp-microvolt-26m-vf0204 = <800000>;
+-			opp-microvolt-26m-vf0400 = <800000>;
+-			opp-microvolt-26m-vf0401 = <820000>;
+-			opp-microvolt-26m-vf0500 = <800000>;
+-			opp-microvolt-26m-vf0501 = <800000>;
+ 		};
+ 
+ 		npu_opp_table_1008: opp-1008 {
+ 			opp-hz = /bits/ 64 <1008000000>;
+ 			opp-microvolt-vf0000 = <960000>;
+-			opp-microvolt-vf0200 = <960000>;
+ 			opp-microvolt-vf0202 = <1030000>;
+ 			opp-microvolt-vf0203 = <1030000>;
+ 			opp-microvolt-vf0204 = <1000000>;
+ 			opp-microvolt-vf0205 = <960000>;
+ 			opp-microvolt-vf0206 = <900000>;
+ 			opp-microvolt-vf0300 = <900000>;
+-			opp-microvolt-vf0401 = <960000>;
+-			opp-microvolt-vf0501 = <900000>;
+ 			opp-microvolt-26m-vf0000 = <960000>;
+-			opp-microvolt-26m-vf0200 = <960000>;
+ 			opp-microvolt-26m-vf0202 = <1030000>;
+ 			opp-microvolt-26m-vf0203 = <1030000>;
+ 			opp-microvolt-26m-vf0204 = <1000000>;
+ 			opp-microvolt-26m-vf0205 = <960000>;
+ 			opp-microvolt-26m-vf0206 = <900000>;
+ 			opp-microvolt-26m-vf0300 = <900000>;
+-			opp-microvolt-26m-vf0401 = <960000>;
+-			opp-microvolt-26m-vf0501 = <900000>;
+ 		};
+ 
+ 		npu_opp_table_1120: opp-1120 {
+diff --git a/arch/arm64/boot/dts/allwinner/sun60iw2p1.dtsi b/arch/arm64/boot/dts/allwinner/sun60iw2p1.dtsi
+index 741554eaa4..4611aa29b9 100644
+--- a/arch/arm64/boot/dts/allwinner/sun60iw2p1.dtsi
++++ b/arch/arm64/boot/dts/allwinner/sun60iw2p1.dtsi
+@@ -3,7 +3,7 @@
+ #include <dt-bindings/clock/sun60iw2-rtc.h>
+ #include <dt-bindings/clock/sun60iw2-r-ccu.h>
+ #include <dt-bindings/clock/sun60iw2-cpupll-ccu.h>
+-#include <dt-bindings/clock/sunxi-ccu.h>
++#include <dt-bindings/clock/sunxi-clk.h>
+ #include <dt-bindings/gpio/gpio.h>
+ #include <dt-bindings/gpio/sun4i-gpio.h>
+ #include <dt-bindings/interrupt-controller/arm-gic.h>
+@@ -921,18 +921,17 @@
+ 			clock-names = "hosc", "losc", "iosc";
+ 			#clock-cells = <1>;
+ 			#reset-cells = <1>;
+-			/*
+-			 * for example:
+-			 * sdm_info: sdm_info {
+-			 * 	pll-video0 {
+-			 * 		sdm-enable = <1>;
+-			 * 		sdm-factor = <4>;
+-			 * 		freq-mode  = <TR_2>;
+-			 * 		sdm-freq   = <FREQ_32>;
+-			 * 		sdm-direction  = <SDM_DIR_UP>;
+-			 * 	};
+-			 * };
+-			 */
++		       /*
++			* for example
++			* sdm_info: sdm_info {
++			*	pll-video0 {
++			*		sdm-enable = <1>; // required
++			*		sdm-factor = <4>; // required
++			*		freq-mod   = <TR_N>; // optional: default TR_N
++			*		sdm-freq   = <FREQ_32>; // optional: default FREQ_31_5
++			*	};
++			* };
++			*/
+ 		};
+ 
+ 		r_ccu: r_ccu@7010000 {
+@@ -1497,7 +1496,7 @@
+ 			};
+ 			cpu1{
+ 				id = <20>;
+-				cpu_direct_reg = <0x0A040000 0x2000>;
++				cpu_direct_reg = <0x0A034000 0x2000>;
+ 				cpu_direct_mux = <0x8000200 0x0 0>;
+ 			};
+ 
+@@ -2603,15 +2602,18 @@
+ 				reg = <0x0 0x05820000 0x0 0x1000>;
+ 				interrupts = <GIC_SPI 125 IRQ_TYPE_LEVEL_HIGH>;
+ 				device_id = <0>;
+-				status = "okay";
++				pinctrl-names = "default","sleep";
++				pinctrl-0 = <&ncsi0_8bit_pins_a>;
++				pinctrl-1 = <&ncsi0_8bit_pins_b>;
++				status = "disabled";
+ 			};
+ 			csi1: csi@5821000 {
+ 				compatible = "allwinner,sunxi-csi";
+ 				reg = <0x0 0x05821000 0x0 0x1000>;
+ 				interrupts = <GIC_SPI 126 IRQ_TYPE_LEVEL_HIGH>;
+ 				pinctrl-names = "default","sleep";
+-				pinctrl-0 = <&ncsi0_8bit_pins_a>;
+-				pinctrl-1 = <&ncsi0_8bit_pins_b>;
++				pinctrl-0 = <&ncsi1_8bit_pins_a>;
++				pinctrl-1 = <&ncsi1_8bit_pins_b>;
+ 				device_id = <1>;
+ 				status = "disabled";
+ 			};
+@@ -2620,8 +2622,6 @@
+ 				reg = <0x0 0x05822000 0x0 0x1000>;
+ 				interrupts = <GIC_SPI 127 IRQ_TYPE_LEVEL_HIGH>;
+ 				pinctrl-names = "default","sleep";
+-				pinctrl-0 = <&ncsi1_8bit_pins_a>;
+-				pinctrl-1 = <&ncsi1_8bit_pins_b>;
+ 				device_id = <2>;
+ 				status = "disabled";
+ 			};
+@@ -3548,20 +3548,6 @@
+ 			};
+ 		};
+ 
+-		uio0: uio@4500000 {
+-			compatible = "allwinner,sunxi-uio";
+-			reg = <0x0 0x04500000 0x0 0x10000>;
+-			sunxi,ethernet = <&gmac0>;
+-			status = "disabled";
+-		};
+-
+-		uio1: uio@4510000 {
+-			compatible = "allwinner,sunxi-uio";
+-			reg = <0x0 0x04510000 0x0 0x10000>;
+-			sunxi,ethernet = <&gmac1>;
+-			status = "disabled";
+-		};
+-
+ 		rfkill: rfkill {
+ 			compatible = "allwinner,sunxi-rfkill";
+ 			status = "disabled";
+@@ -3734,6 +3720,8 @@
+ 		sunxi_drm: sunxi-drm {
+ 			compatible = "allwinner,sunxi-drm";
+ 			fb_base = <0>;
++			quirk-prefer-fhd;
++			quirk-prefer-large-60;
+ 			status = "okay";
+ 		};
+ 
+@@ -4323,7 +4311,7 @@
+ 		ufs: ufs@04520000 {
+ 			compatible = "allwinner,sunxi-ufs-v0";
+ 			device_type = "ufs";
+-			reg = <0x0 0x4520000 0x0 0x10000>;
++			reg = <0x0 0x4520000 0x0 0x1000>;
+ 			interrupts = <GIC_SPI 165 IRQ_TYPE_EDGE_RISING>;
+ 			clocks = <&sys24M>,
+ 				<&ccu CLK_PLL_PERI0_200M>,
+@@ -4343,8 +4331,6 @@
+ 				 <&ccu RST_BUS_UFS_AXI>,
+ 				 <&ccu RST_BUS_UFS_AHB>;
+ 			reset-names = "controller_rst", "phy_rst", "axi_rst", "ahb_rst";
+-			caps-wb-en;
+-			/*caps-crypto;*/
+ 			status = "disabled";
+ 		};
+ 
