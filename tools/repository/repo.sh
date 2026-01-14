@@ -5,31 +5,13 @@ DRY_RUN=false              # Full dry-run: don't make any repository changes
 KEEP_SOURCES=false         # Keep source packages when adding to repo (don't delete)
 SINGLE_RELEASE=""          # Process only a single release (for GitHub Actions parallel workflow)
 FORCE_ADD=false            # Force re-adding packages even if they already exist in repo
-FORCE_PUBLISH=false        # Force publishing even when no packages to add
+FORCE_PUBLISH=true         # Force publishing even when no packages to add
 
 # Logging function - uses syslog, view logs with: journalctl -t repo-management -f
 # Arguments:
 #   $* - Message to log
 log() {
     logger -t repo-management "$*"
-}
-
-# Execute a command, respecting dry-run mode
-# In dry-run mode, logs what would be executed without actually running it
-# Arguments:
-#   $* - Command to execute
-# Returns:
-#   Command exit status (0 in dry-run mode)
-run_cmd() {
-    local cmd="$*"
-    if [[ "$DRY_RUN" == true ]]; then
-        log "[DRY-RUN] Would execute: $cmd"
-        return 0
-    else
-        log "Executing: $cmd"
-        eval "$cmd"
-        return $?
-    fi
 }
 
 # Execute aptly command and check for errors
@@ -65,7 +47,7 @@ drop_unsupported_releases() {
 		supported_releases=()
 	else
 		log "Cleanup: dropping unsupported releases"
-		supported_releases=($(grep -rw config/distributions/*/support -ve 'eos' | cut -d"/" -f3))
+		supported_releases=($(grep -rw config/distributions/*/support | cut -d"/" -f3))
 	fi
 
 	# Get currently published repositories
@@ -82,25 +64,74 @@ drop_unsupported_releases() {
 
 	# Drop the identified repositories
 	for repo in "${repos_to_drop[@]}"; do
-		run_cmd aptly publish drop -config="${CONFIG}" "${repo}"
+		run_aptly publish drop -config="${CONFIG}" "${repo}"
 	done
 }
 # Display contents of all repositories
 # Shows packages in the common repository and release-specific repositories (utils, desktop)
-# Uses global DISTROS array for iteration
+# In single-release mode, shows content from isolated database
+# Otherwise, shows content from main database and any existing isolated databases
+# Uses global DISTROS array for iteration, or discovers repos automatically if DISTROS is empty
 showall() {
 	echo "Displaying common repository contents"
 	aptly repo show -with-packages -config="${CONFIG}" common 2>/dev/null | tail -n +7
 
-	for release in "${DISTROS[@]}"; do
-		# Only show if the repo exists
-		if aptly repo show -config="${CONFIG}" "${release}-utils" &>/dev/null; then
-			echo "Displaying repository contents for $release-utils"
-			aptly repo show -with-packages -config="${CONFIG}" "${release}-utils" | tail -n +7
+	# If DISTROS array is empty, discover repos from the database
+	local releases_to_show=("${DISTROS[@]}")
+	if [[ ${#DISTROS[@]} -eq 0 ]]; then
+		# First, discover releases from isolated databases
+		local all_repos=()
+		if [[ -d "$output" ]]; then
+			for isolated_dir in "$output"/aptly-isolated-*; do
+				if [[ -d "$isolated_dir" ]]; then
+					local release_name=$(basename "$isolated_dir" | sed 's/aptly-isolated-//')
+					all_repos+=("$release_name")
+				fi
+			done
 		fi
-		if aptly repo show -config="${CONFIG}" "${release}-desktop" &>/dev/null; then
+		# Also get repos from main database (for non-isolated repos)
+		local main_repos
+		main_repos=($(aptly repo list -config="${CONFIG}" -raw 2>/dev/null | awk '{print $NF}' | grep -E '^.+-(utils|desktop)$' | sed 's/-(utils|desktop)$//' | sort -u))
+		# Merge and deduplicate
+		all_repos+=("${main_repos[@]}")
+		releases_to_show=($(echo "${all_repos[@]}" | tr ' ' '\n' | sort -u))
+	fi
+
+	for release in "${releases_to_show[@]}"; do
+		# In single-release mode, only show that specific release from the isolated database
+		if [[ -n "$SINGLE_RELEASE" ]]; then
+			if [[ "$release" != "$SINGLE_RELEASE" ]]; then
+				continue
+			fi
+		fi
+
+		# Check if there's an isolated database for this release
+		local isolated_db="${output}/aptly-isolated-${release}"
+		local show_config="$CONFIG"
+
+		if [[ -d "$isolated_db" ]]; then
+			# Create temporary config for the isolated database
+			local temp_config
+			temp_config="$(mktemp)"
+			sed 's|"rootDir": ".*"|"rootDir": "'$isolated_db'"|g' tools/repository/aptly.conf > "$temp_config"
+			show_config="$temp_config"
+		fi
+
+		# Show utils repo if it exists
+		if aptly repo show -config="${show_config}" "${release}-utils" &>/dev/null; then
+			echo "Displaying repository contents for $release-utils"
+			aptly repo show -with-packages -config="${show_config}" "${release}-utils" | tail -n +7
+		fi
+
+		# Show desktop repo if it exists
+		if aptly repo show -config="${show_config}" "${release}-desktop" &>/dev/null; then
 			echo "Displaying repository contents for $release-desktop"
-			aptly repo show -with-packages -config="${CONFIG}" "${release}-desktop" | tail -n +7
+			aptly repo show -with-packages -config="${show_config}" "${release}-desktop" | tail -n +7
+		fi
+
+		# Clean up temp config if we created one
+		if [[ -n "$temp_config" && -f "$temp_config" ]]; then
+			rm -f "$temp_config"
 		fi
 	done
 }
@@ -205,8 +236,9 @@ adding_packages() {
 		# Determine whether to remove source files after adding to repo
 		# KEEP_SOURCES mode preserves source packages
 		# DRY_RUN mode also preserves sources (and skips all repo modifications)
+		# SINGLE_RELEASE mode preserves sources so parallel workers don't delete files needed by other workers
 		local remove_flag="-remove-files"
-		if [[ "$KEEP_SOURCES" == true ]] || [[ "$DRY_RUN" == true ]]; then
+		if [[ "$KEEP_SOURCES" == true ]] || [[ "$DRY_RUN" == true ]] || [[ -n "$SINGLE_RELEASE" ]]; then
 			remove_flag=""
 		fi
 
@@ -239,13 +271,24 @@ update_main() {
 	# Add packages from main folder
 	adding_packages "common" "" "main" "$input_folder"
 
-	# Drop old snapshot
+	# Drop old snapshot if it exists and is not published
 	if [[ -n $(aptly snapshot list -config="${CONFIG}" -raw | awk '{print $(NF)}' | grep "common") ]]; then
-		run_aptly -config="${CONFIG}" snapshot drop common | logger -t repo-management >/dev/null
+		# Check if snapshot is published
+		if ! aptly publish list -config="${CONFIG}" 2>/dev/null | grep -q "common"; then
+			run_aptly -config="${CONFIG}" snapshot drop common | logger -t repo-management >/dev/null
+		else
+			log "WARNING: common snapshot is published, cannot drop. Packages added to repo but snapshot not updated."
+			log "Run 'update' command to update all releases with new packages."
+			return 0
+		fi
 	fi
 
-	# Create new snapshot
-	run_aptly -config="${CONFIG}" snapshot create common from repo common | logger -t repo-management >/dev/null
+	# Create new snapshot if it doesn't exist or was dropped
+	if [[ -z $(aptly snapshot list -config="${CONFIG}" -raw | awk '{print $(NF)}' | grep "common") ]]; then
+		run_aptly -config="${CONFIG}" snapshot create common from repo common | logger -t repo-management >/dev/null
+	else
+		log "common snapshot already exists, skipping creation"
+	fi
 
 	log "Common component built successfully"
 }
@@ -266,19 +309,11 @@ process_release() {
 
 	log "Processing release: $release"
 
-	# In isolated mode (SINGLE_RELEASE), ensure common snapshot exists
-	# It should have been created by 'update-main' command, but if not, create empty common
-	if [[ -n "$SINGLE_RELEASE" && -z $(aptly snapshot list -config="${CONFIG}" -raw | awk '{print $(NF)}' | grep "common") ]]; then
-		log "WARNING: Common snapshot not found. Creating empty common snapshot."
-		log "Please run 'update-main' command first to populate common packages."
-
-		# Create empty common repo
-		if [[ -z $(aptly repo list -config="${CONFIG}" -raw | awk '{print $(NF)}' | grep common) ]]; then
-			aptly repo create -config="${CONFIG}" -distribution="common" -component="main" -comment="Armbian common packages" "common" | logger -t repo-management >/dev/null
-		fi
-
-		# Create snapshot (will be empty until update-main is run)
-		aptly -config="${CONFIG}" snapshot create common from repo common | logger -t repo-management >/dev/null
+	# In isolated mode (SINGLE_RELEASE), workers do NOT build common repo
+	# Common component is built separately by 'update-main' command and merged later
+	# This avoids duplicate work when running in parallel
+	if [[ -n "$SINGLE_RELEASE" ]]; then
+		log "Isolated mode: skipping common repo (will be merged by 'merge' command)"
 	fi
 
 	# Create release-specific repositories if they don't exist
@@ -305,13 +340,11 @@ process_release() {
 
 	log "Package counts for $release: utils=$utils_count, desktop=$desktop_count"
 
-	# If no packages in either repo and not previously published, skip publishing
-	# Unless FORCE_PUBLISH is enabled
+	# Always publish - even if no release-specific packages, we still need to publish common/main
+	# Check if this release was previously published for logging
 	if [[ "$utils_count" -eq 0 && "$desktop_count" -eq 0 && "$FORCE_PUBLISH" != true ]]; then
-		# Check if this release was previously published
 		if ! aptly publish list -config="${CONFIG}" 2>/dev/null | grep -q "^\[${release}\]"; then
-			log "No packages to publish for $release and not previously published. Skipping."
-			return 0
+			log "No release-specific packages for $release. Publishing common/main component only."
 		else
 			log "No new packages but $release was previously published. Will publish with common only."
 		fi
@@ -321,18 +354,32 @@ process_release() {
 		log "Force publish enabled: will publish even with no packages"
 	fi
 
-	# Drop old snapshots if they exist
-	if [[ -n $(aptly snapshot list -config="${CONFIG}" -raw | awk '{print $(NF)}' | grep "${release}-utils") ]]; then
-		run_aptly -config="${CONFIG}" snapshot drop ${release}-utils | logger -t repo-management 2>/dev/null
+	# Drop old snapshots if we have new packages to add OR if FORCE_PUBLISH is enabled
+	# This ensures fresh snapshots are created for force-publish scenarios
+	if [[ "$utils_count" -gt 0 || "$FORCE_PUBLISH" == true ]]; then
+		if [[ -n $(aptly snapshot list -config="${CONFIG}" -raw | awk '{print $(NF)}' | grep "${release}-utils") ]]; then
+			log "Dropping existing ${release}-utils snapshot"
+			run_aptly -config="${CONFIG}" snapshot drop ${release}-utils | logger -t repo-management 2>/dev/null
+		fi
 	fi
-	if [[ -n $(aptly snapshot list -config="${CONFIG}" -raw | awk '{print $(NF)}' | grep "${release}-desktop") ]]; then
-		run_aptly -config="${CONFIG}" snapshot drop ${release}-desktop | logger -t repo-management 2>/dev/null
+	if [[ "$desktop_count" -gt 0 || "$FORCE_PUBLISH" == true ]]; then
+		if [[ -n $(aptly snapshot list -config="${CONFIG}" -raw | awk '{print $(NF)}' | grep "${release}-desktop") ]]; then
+			log "Dropping existing ${release}-desktop snapshot"
+			run_aptly -config="${CONFIG}" snapshot drop ${release}-desktop | logger -t repo-management 2>/dev/null
+		fi
 	fi
 
 	# Create snapshots only for repos that have packages
 	# OR when FORCE_PUBLISH is enabled (then we publish whatever exists in the DB)
-	local components_to_publish=("main")
-	local snapshots_to_publish=("common")
+	# In isolated mode, do NOT include common snapshot - it will be merged later
+	local components_to_publish=()
+	local snapshots_to_publish=()
+
+	# Only add common/main component if NOT in isolated mode
+	if [[ -z "$SINGLE_RELEASE" ]]; then
+		components_to_publish=("main")
+		snapshots_to_publish=("common")
+	fi
 
 	if [[ "$utils_count" -gt 0 || "$FORCE_PUBLISH" == true ]]; then
 		# Only create snapshot if repo has packages, or if force-publishing
@@ -388,26 +435,21 @@ process_release() {
 		publish_dir="$IsolatedRootDir"
 	fi
 
+	# In isolated mode, do NOT publish - only create repos and snapshots
+	# The merge command will handle all publishing with common component included
+	if [[ -n "$SINGLE_RELEASE" ]]; then
+		log "Isolated mode: skipping publishing (merge command will publish with common component)"
+		log "Created repos and snapshots for $release in isolated database"
+		return 0
+	fi
+
 	# Publish - include common snapshot for main component
 	log "Publishing $release"
 
 	# Drop existing publish for this release if it exists to avoid "file already exists" errors
 	if aptly publish list -config="${CONFIG}" 2>/dev/null | grep -q "^\[${release}\]"; then
-		log "Dropping existing publish for $release from isolated DB"
+		log "Dropping existing publish for $release"
 		run_aptly publish drop -config="${CONFIG}" "${release}"
-	fi
-
-	# When using isolated DB, only clean up the isolated DB's published files
-	# DO NOT clean up shared output - other parallel workers might be using it
-	# The rsync copy will overwrite as needed, preserving other releases' files
-	if [[ -n "$SINGLE_RELEASE" ]]; then
-		# Clean up isolated DB's published files only
-		if [[ -d "${IsolatedRootDir}/public/dists/${release}" ]]; then
-			log "Cleaning up existing published files for $release in isolated DB"
-			rm -rf "${IsolatedRootDir}/public/dists/${release}"
-			# Clean up pool entries for this release in isolated DB
-			find "${IsolatedRootDir}/public/pool" -type d -name "${release}-*" 2>/dev/null | xargs -r rm -rf
-		fi
 	fi
 
 	# Build publish command with only components that have packages
@@ -416,6 +458,12 @@ process_release() {
 
 	log "Publishing with components: $component_list"
 	log "Publishing with snapshots: $snapshot_list"
+
+	# Skip publishing if no components to publish (shouldn't happen, but safety check)
+	if [[ ${#components_to_publish[@]} -eq 0 ]]; then
+		log "WARNING: No components to publish for $release"
+		return 0
+	fi
 
 	run_aptly publish \
 		-skip-signing \
@@ -426,30 +474,15 @@ process_release() {
 		-label="Armbian" \
 		-config="${CONFIG}" \
 		-component="$component_list" \
-		-distribution="${release}" snapshot $snapshot_list > /dev/null
-
-	# If using isolated DB, copy published files to shared output location FIRST
-	if [[ -n "$SINGLE_RELEASE" && "$publish_dir" != "$output_folder" ]]; then
-		log "Copying published files from isolated DB to shared output"
-		if [[ -d "${publish_dir}/public" ]]; then
-			mkdir -p "${output_folder}/public"
-			# Use rsync to copy published repo files to shared location
-			# NO --delete flag - we want to preserve other releases' files
-			if ! rsync -a "${publish_dir}/public/" "${output_folder}/public/" 2>&1 | logger -t repo-management; then
-				log "ERROR: Failed to copy published files for $release"
-				return 1
-			fi
-			log "Copied files for $release to ${output_folder}/public/"
-		fi
-	fi
+		-distribution="${release}" snapshot $snapshot_list
 
 	# Sign Release files for this release
 	# This includes:
 	# 1. Top-level Release file (dists/{release}/Release)
 	# 2. Component-level Release files (dists/{release}/{component}/Release)
-	# Sign AFTER copying so signed files end up in the shared output location
+	# Only sign in non-isolated mode (isolated mode is signed by merge command)
 	log "Starting signing process for $release"
-	# Use shared output location for signing, not isolated directory
+	# Use shared output location for signing
 	local release_pub_dir="${output_folder}/public/dists/${release}"
 
 	# Get GPG keys from environment or use defaults
@@ -557,10 +590,10 @@ publishing() {
 		fi
 		run_aptly -config="${CONFIG}" snapshot create common from repo common | logger -t repo-management >/dev/null
 	else
-		# Single-release mode: ensure common snapshot exists (should be created by update-main)
-		if [[ -z $(aptly snapshot list -config="${CONFIG}" -raw | awk '{print $(NF)}' | grep "common") ]]; then
-			log "WARNING: Common snapshot not found. Run 'update-main' command first!"
-		fi
+		# Single-release mode: common component should be built separately with 'update-main'
+		# and will be merged during the 'merge' command
+		log "Single-release mode: skipping common component (will be merged later)"
+		log "Common component should be built with: ./repo.sh -c update-main"
 	fi
 
 	# Get all distributions or use single release if specified
@@ -633,23 +666,17 @@ signing() {
         echo "Using GPG key: $actual_key (requested: $key)" >&2
     done
 
-    # Only sign Release files at component level, NOT binary subdirs
-    # Sign: dists/{release}/{component}/Release
-    # Skip: dists/{release}/Release (top-level, not needed)
-    # Skip: dists/{release}/*/binary-*/Release (subdirs, not needed)
-    find "$output_folder/public/dists" -type f -name Release | while read -r release_file; do
-        # Skip if file is in a binary-* subdirectory
-        if [[ "$release_file" =~ /binary-[^/]+/Release$ ]]; then
-            continue
-        fi
-
-        # Skip top-level Release files (dists/{release}/Release)
-        # Only sign component-level Release files (dists/{release}/{component}/Release)
+    # Sign top-level Release files for each distribution
+    # Sign: dists/{release}/Release
+    # Skip: dists/{release}/{component}/binary-*/Release (subdirs, not needed)
+    find "$output_folder/public/dists" -maxdepth 2 -type f -name Release | while read -r release_file; do
+        # Skip if file is in a subdirectory (component or binary subdir)
+        # Only sign top-level dists/{release}/Release files
         local rel_path="${release_file#$output_folder/public/dists/}"
-        # Count slashes - should have exactly 2 for component level: {release}/{component}/Release
+        # Count slashes - should have exactly 1 for top-level: {release}/Release
         local slash_count=$(echo "$rel_path" | tr -cd '/' | wc -c)
 
-        if [[ $slash_count -eq 2 ]]; then
+        if [[ $slash_count -eq 1 ]]; then
             local distro_path
             distro_path="$(dirname "$release_file")"
             echo "Signing release at: $distro_path" | logger -t repo-management
@@ -661,8 +688,8 @@ signing() {
 
 
 # Finalize repository after parallel GitHub Actions workers have built individual releases
-# Workers have already built and signed repos in isolated databases, so this just
-# ensures the GPG key and control file are in place
+# Combines the common/main component (built by update-main) with release-specific
+# components (built by parallel workers) into the final repository structure
 # Arguments:
 #   $1 - Base input folder (contains package sources, for consistency)
 #   $2 - Output folder containing combined repository
@@ -670,21 +697,319 @@ merge_repos() {
 	local input_folder="$1"
 	local output_folder="$2"
 
-	log "Merge mode: finalizing combined repository"
-	log "Workers have already built and signed individual releases"
+	log "Merge mode: combining common component with release-specific components"
 
-	# Repositories are already built and signed by parallel workers
-	# Just need to ensure the key and control file are in place
+	# We need to use the main database to properly merge components
+	# The main DB should have the common snapshot from update-main
+
+	# Create a temp config pointing to the main DB (not isolated)
+	local main_db_config
+	main_db_config="$(mktemp)"
+	sed 's|"rootDir": ".*"|"rootDir": "'$output_folder'"|g' tools/repository/aptly.conf > "$main_db_config"
+
+	# Check if common snapshot exists in main DB
+	local common_exists=false
+	if [[ -n $(aptly -config="$main_db_config" snapshot list -raw 2>/dev/null | awk '{print $(NF)}' | grep "common") ]]; then
+		common_exists=true
+		log "Found common snapshot in main database"
+	fi
+
+	# Get all releases that need to be merged
+	# These are releases that workers built in isolated DBs
+	local releases=()
+
+	# Discover releases from isolated databases directory
+	if [[ -d "$output_folder" ]]; then
+		for isolated_dir in "$output_folder"/aptly-isolated-*; do
+			if [[ -d "$isolated_dir" ]]; then
+				local release=$(basename "$isolated_dir" | sed 's/aptly-isolated-//')
+				releases+=("$release")
+			fi
+		done
+	fi
+
+	# Also check if there are any published releases (from old workflow or sequential mode)
+	if [[ -d "$output_folder/public/dists" ]]; then
+		for release_dir in "$output_folder/public/dists"/*; do
+			if [[ -d "$release_dir" ]]; then
+				local release=$(basename "$release_dir")
+				# Skip common distribution
+				[[ "$release" == "common" ]] && continue
+				# Add if not already in list
+				if [[ ! " ${releases[@]} " =~ " ${release} " ]]; then
+					releases+=("$release")
+				fi
+			fi
+		done
+	fi
+
+	log "Found ${#releases[@]} release(s) to process: ${releases[*]:-none}"
+
+	# If there are no releases to process, this is a no-op (not an error)
+	# This can happen when the repository is empty or workers haven't run yet
+	if [[ ${#releases[@]} -eq 0 ]]; then
+		log "No releases to merge - nothing to do"
+		rm -f "$main_db_config"
+		return 0
+	fi
+
+	# If we have releases but no common snapshot, that's an error (incomplete workflow)
+	if [[ "$common_exists" == false ]]; then
+		log "ERROR: Common snapshot not found in main database"
+		log "Found ${#releases[@]} release(s) to merge but no common snapshot"
+		log "Run 'update-main' command first!"
+		rm -f "$main_db_config"
+		return 1
+	fi
+
+	# Import snapshots from isolated databases into main database
+	# This allows us to re-publish with common component included
+	for release in "${releases[@]}"; do
+		local isolated_db="${output_folder}/aptly-isolated-${release}"
+
+		if [[ -d "$isolated_db" ]]; then
+			log "Importing from isolated DB for $release"
+
+			# Create temp config for isolated DB
+			local isolated_config
+			isolated_config="$(mktemp)"
+			sed 's|"rootDir": ".*"|"rootDir": "'$isolated_db'"|g' tools/repository/aptly.conf > "$isolated_config"
+
+			# Import release-specific snapshots from isolated DB to main DB
+			# First, we need to import the repos, then create snapshots
+
+			# Check if utils repo exists in isolated DB
+			if aptly -config="$isolated_config" repo show "${release}-utils" &>/dev/null; then
+				log "Importing ${release}-utils from isolated DB"
+
+				# Create repo in main DB if it doesn't exist
+				if ! aptly -config="$main_db_config" repo show "${release}-utils" &>/dev/null; then
+					run_aptly -config="$main_db_config" repo create -component="${release}-utils" -distribution="${release}" -comment="Armbian ${release}-utils repository" "${release}-utils"
+				fi
+
+				# Export packages from isolated repo and import to main repo
+				# Get list of packages in isolated repo
+				local packages
+				packages=$(aptly -config="$isolated_config" repo show -with-packages "${release}-utils" 2>/dev/null | tail -n +7)
+
+				if [[ -n "$packages" ]]; then
+					log "Adding ${release}-utils packages to main database"
+
+					# Get list of packages already in main DB to avoid re-adding them
+					local main_db_packages
+					main_db_packages=$(aptly -config="$main_db_config" repo show -with-packages "${release}-utils" 2>/dev/null | tail -n +7 || echo "")
+
+					# Add packages from isolated DB's pool to main repo
+					# We need to find the .deb files in the isolated pool and add them
+					local isolated_pool="${isolated_db}/pool"
+					if [[ -d "$isolated_pool" ]]; then
+						# Find all .deb files for this release in the isolated pool
+						# IMPORTANT: Only add packages that are actually in this repo, not all packages in pool!
+						find "$isolated_pool" -name "*.deb" -type f | while read -r deb_file; do
+							# Get package info to check if it belongs to this repo
+							local deb_name deb_version deb_arch
+							deb_info=$(dpkg-deb -f "$deb_file" Package Version Architecture 2>/dev/null)
+							deb_name=$(echo "$deb_info" | sed -n '1s/Package: //p')
+							deb_version=$(echo "$deb_info" | sed -n '2s/Version: //p')
+							deb_arch=$(echo "$deb_info" | sed -n '3s/Architecture: //p')
+							local deb_key="${deb_name}_${deb_version}_${deb_arch}"
+
+							# Check if this package is in the utils repo (isolated)
+							# aptly output has leading spaces, so grep without anchors
+							if echo "$packages" | grep -qw "${deb_key}"; then
+								# Check if package already exists in main DB repo to avoid conflicts
+								if echo "$main_db_packages" | grep -qw "${deb_key}"; then
+									# Package already in main DB, skip it
+									continue
+								fi
+								run_aptly -config="$main_db_config" repo add -force-replace "${release}-utils" "$deb_file"
+							fi
+						done
+					fi
+				fi
+			fi
+
+			# Same for desktop repo
+			if aptly -config="$isolated_config" repo show "${release}-desktop" &>/dev/null; then
+				log "Importing ${release}-desktop from isolated DB"
+
+				# Create repo in main DB if it doesn't exist
+				if ! aptly -config="$main_db_config" repo show "${release}-desktop" &>/dev/null; then
+					run_aptly -config="$main_db_config" repo create -component="${release}-desktop" -distribution="${release}" -comment="Armbian ${release}-desktop repository" "${release}-desktop"
+				fi
+
+				# Export packages from isolated repo and import to main repo
+				local packages
+				packages=$(aptly -config="$isolated_config" repo show -with-packages "${release}-desktop" 2>/dev/null | tail -n +7)
+
+				if [[ -n "$packages" ]]; then
+					log "Adding ${release}-desktop packages to main database"
+
+					# Get list of packages already in main DB to avoid re-adding them
+					local main_db_packages
+					main_db_packages=$(aptly -config="$main_db_config" repo show -with-packages "${release}-desktop" 2>/dev/null | tail -n +7 || echo "")
+
+					local isolated_pool="${isolated_db}/pool"
+					if [[ -d "$isolated_pool" ]]; then
+						find "$isolated_pool" -name "*.deb" -type f | while read -r deb_file; do
+							# Get package info to check if it belongs to this repo
+							local deb_name deb_version deb_arch
+							deb_info=$(dpkg-deb -f "$deb_file" Package Version Architecture 2>/dev/null)
+							deb_name=$(echo "$deb_info" | sed -n '1s/Package: //p')
+							deb_version=$(echo "$deb_info" | sed -n '2s/Version: //p')
+							deb_arch=$(echo "$deb_info" | sed -n '3s/Architecture: //p')
+							local deb_key="${deb_name}_${deb_version}_${deb_arch}"
+
+							# Check if this package is in the desktop repo (isolated)
+							# aptly output has leading spaces, so grep without anchors
+							if echo "$packages" | grep -qw "${deb_key}"; then
+								# Check if package already exists in main DB repo to avoid conflicts
+								if echo "$main_db_packages" | grep -qw "${deb_key}"; then
+									# Package already in main DB, skip it
+									continue
+								fi
+								run_aptly -config="$main_db_config" repo add -force-replace "${release}-desktop" "$deb_file"
+							fi
+						done
+					fi
+				fi
+			fi
+
+			rm -f "$isolated_config"
+		else
+			log "No isolated DB found for $release (repos may already be in main DB)"
+			# Repos may already exist in main DB from sequential mode
+		fi
+	done
+
+	# Now re-publish all releases with common component included
+	log "Re-publishing releases with common component..."
+
+	# First, drop ALL existing publishes for the releases we're about to publish
+	# This prevents "prefix/distribution already used" errors
+	log "Current publish list:"
+	aptly -config="$main_db_config" publish list 2>&1 | logger -t repo-management
+
+	for release in "${releases[@]}"; do
+		log "Checking for existing publishes for $release"
+		# Try to match various formats that aptly might use
+		# Formats seen: P.* ./bookworm, [bookworm], etc.
+		if aptly -config="$main_db_config" publish list 2>/dev/null | grep -E "(\\[${release}\\]|\\.\\/${release})" >/dev/null; then
+			log "Pre-drop: Removing existing publish for $release"
+			# Use aptly directly (not run_aptly) to avoid exit on failure
+			aptly -config="$main_db_config" publish drop "${release}" 2>/dev/null || true
+			# Also try with prefix if the above didn't work
+			aptly -config="$main_db_config" publish drop "./${release}" 2>/dev/null || true
+		else
+			log "No existing publish found for $release"
+		fi
+	done
+
+	# Clean up published pool once before all publishes to avoid "file already exists and is different" errors
+	# This happens when packages are rebuilt with same version but different content
+	# IMPORTANT: Do this ONCE before publishing all releases, not per-release
+	local published_pool="${output_folder}/public/pool"
+	if [[ -d "$published_pool" ]]; then
+		log "Removing published pool to avoid conflicts..."
+		rm -rf "${published_pool:?}"/*
+		log "Pool cleanup complete"
+	fi
+
+	for release in "${releases[@]}"; do
+		log "Publishing $release with common component..."
+
+		# Determine which components to publish
+		local components_to_publish=("main")
+		local snapshots_to_publish=("common")
+
+		# Check if utils repo has packages
+		local utils_has_packages=false
+		if aptly -config="$main_db_config" repo show "${release}-utils" &>/dev/null; then
+			local utils_count=$(aptly -config="$main_db_config" repo show "${release}-utils" 2>/dev/null | grep "Number of packages" | awk '{print $4}' || echo "0")
+			log "Utils repo has $utils_count packages"
+			if [[ "$utils_count" -gt 0 ]]; then
+				utils_has_packages=true
+				# Drop old snapshot if exists
+				if [[ -n $(aptly -config="$main_db_config" snapshot list -raw | awk '{print $(NF)}' | grep "${release}-utils") ]]; then
+					run_aptly -config="$main_db_config" snapshot drop "${release}-utils"
+				fi
+				# Create new snapshot
+				run_aptly -config="$main_db_config" snapshot create "${release}-utils" from repo "${release}-utils"
+				components_to_publish+=("${release}-utils")
+				snapshots_to_publish+=("${release}-utils")
+			fi
+		else
+			log "Utils repo does not exist in main DB"
+		fi
+
+		# Check if desktop repo has packages
+		local desktop_has_packages=false
+		if aptly -config="$main_db_config" repo show "${release}-desktop" &>/dev/null; then
+			local desktop_count=$(aptly -config="$main_db_config" repo show "${release}-desktop" 2>/dev/null | grep "Number of packages" | awk '{print $4}' || echo "0")
+			log "Desktop repo has $desktop_count packages"
+			if [[ "$desktop_count" -gt 0 ]]; then
+				desktop_has_packages=true
+				# Drop old snapshot if exists
+				if [[ -n $(aptly -config="$main_db_config" snapshot list -raw | awk '{print $(NF)}' | grep "${release}-desktop") ]]; then
+					run_aptly -config="$main_db_config" snapshot drop "${release}-desktop"
+				fi
+				# Create new snapshot
+				run_aptly -config="$main_db_config" snapshot create "${release}-desktop" from repo "${release}-desktop"
+				components_to_publish+=("${release}-desktop")
+				snapshots_to_publish+=("${release}-desktop")
+			fi
+		else
+			log "Desktop repo does not exist in main DB"
+		fi
+
+		# Skip publishing if neither utils nor desktop has packages
+		if [[ "$utils_has_packages" == false && "$desktop_has_packages" == false ]]; then
+			log "Skipping $release - no packages in utils or desktop repos"
+			continue
+		fi
+
+		log "Publishing $release with components: ${components_to_publish[*]}"
+
+		# Build publish command
+		local component_list=$(IFS=,; echo "${components_to_publish[*]}")
+		local snapshot_list="${snapshots_to_publish[*]}"
+
+		# Publish with common component included
+		log "Publishing $release with component list: $component_list"
+
+		if ! run_aptly publish \
+			-skip-signing \
+			-skip-contents \
+			-architectures="armhf,arm64,amd64,riscv64,i386,loong64,all" \
+			-passphrase="${password:-}" \
+			-origin="Armbian" \
+			-label="Armbian" \
+			-config="$main_db_config" \
+			-component="$component_list" \
+			-distribution="${release}" snapshot $snapshot_list; then
+			log "ERROR: Failed to publish $release"
+			# Try to provide more diagnostic information
+			aptly -config="$main_db_config" publish list 2>&1 | logger -t repo-management
+			return 1
+		fi
+		log "Successfully published $release"
+	done
+
+	# Cleanup temp config
+	rm -f "$main_db_config"
+
+	# Sign all Release files
+	log "Signing Release files..."
+	signing "$output_folder" "DF00FAF1C577104B50BF1D0093D6889F9F0E78D5" "8CFA83D13EB2181EEF5843E41EB30FAF236099FE"
 
 	# Copy GPG key to repository
 	mkdir -p "${output_folder}"/public/
-	# Remove existing key file if it exists to avoid permission issues
 	rm -f "${output_folder}"/public/armbian.key
 	cp config/armbian.key "${output_folder}"/public/
 	log "Copied GPG key to repository"
 
 	# Write repository sync control file
-	sudo date +%s > ${output_folder}/public/control
+	date +%s > ${output_folder}/public/control
 	log "Updated repository control file"
 
 	# Display repository contents
@@ -755,7 +1080,7 @@ repo-manipulate() {
 		echo "<thead><tr><td colspan=3><h2>$release</h2></tr><tr><th>Main</th><th>Utils</th><th>Desktop</th></tr></thead>"
 		echo "<tbody><tr><td width=33% valign=top>"
 		aptly repo show -with-packages -config="${CONFIG}" "${release}-utils" | tail -n +7 | sed 's/.*/&<br>/'
-		echo "</td><td width=33% valign=top>" | sudo tee -a ${filename}
+		echo "</td><td width=33% valign=top>"
 		aptly repo show -with-packages -config="${CONFIG}" "${release}-desktop" | tail -n +7 | sed 's/.*/&<br>/'
 		echo "</td></tr></tbody>"
 		done
@@ -822,8 +1147,8 @@ repo-manipulate() {
 		;;
 
 	update)
-		# remove old releases from publishing
-		drop_unsupported_releases "all"
+		# remove old releases from publishing (only drops unsupported releases, not all)
+		drop_unsupported_releases ""
 		publishing "$1" "$2" "$3" "$4" "$5"
 		# Only use signing function for non-single-release mode
 		# In single-release mode, workers already signed their components
@@ -851,7 +1176,7 @@ input="output/debs-beta"
 output="output/repository"
 command="show"
 if [[ -d "config/distributions" ]]; then
-	releases=$(grep -rw config/distributions/*/support -ve 'eos' 2>/dev/null | cut -d"/" -f3 | xargs | sed -e 's/ /,/g')
+	releases=$(grep -rw config/distributions/*/support 2>/dev/null | cut -d"/" -f3 | xargs | sed -e 's/ /,/g')
 	if [[ -z "$releases" ]]; then
 		log "WARNING: No releases found in config/distributions"
 	fi
@@ -900,19 +1225,21 @@ Usage: $0 [ -short | --long ]
                              (by default, skips publishing empty releases)
 
 GitHub Actions parallel workflow example:
-  # Step 1: Build common (main) component once (optional - workers will create it if missing)
+  # Step 1: Build common (main) component once
   ./repo.sh -c update-main -i /shared/packages -o /shared/output
 
   # Step 2: Workers build release-specific components in parallel (isolated DBs)
+  # Workers do NOT build common component - it's merged later
   # Worker 1:  ./repo.sh -c update -R jammy -k -i /shared/packages -o /shared/output
   # Worker 2:  ./repo.sh -c update -R noble -k -i /shared/packages -o /shared/output
   # Worker 3:  ./repo.sh -c update -R bookworm -k -i /shared/packages -o /shared/output
 
-  # Step 3: Final merge to combine all outputs
+  # Step 3: Final merge to combine common component with release-specific components
   ./repo.sh -c merge -i /shared/packages -o /shared/output
 
 Note: Each worker uses isolated DB (aptly-isolated-<release>) to avoid locking.
-Common snapshot is created in each worker's isolated DB from root packages.
+Workers build ONLY release-specific components; common component is merged by 'merge' command.
+This avoids duplicate work - common packages are added once, not by every worker.
 	"
     exit 2
 }
@@ -1000,13 +1327,7 @@ if [[ -n "$SINGLE_RELEASE" ]]; then
 	# Create isolated aptly directory for this release
 	IsolatedRootDir="${output}/aptly-isolated-${SINGLE_RELEASE}"
 
-	# Clean up isolated DB from previous runs to ensure fresh state
-	# This prevents database/pool desync and "no such file" errors
-	if [[ -d "$IsolatedRootDir" ]]; then
-		log "Cleaning up isolated DB from previous run: $IsolatedRootDir"
-		rm -rf "${IsolatedRootDir}"
-	fi
-
+	# Create the isolated directory if it doesn't exist
 	if ! mkdir -p "$IsolatedRootDir"; then
 		log "ERROR: mkdir $IsolatedRootDir: permission denied"
 		exit 1

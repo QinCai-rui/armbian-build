@@ -113,6 +113,8 @@ function compile_uboot_target() {
 	# @TODO: why?
 	touch .scmversion
 
+	declare uboot_loglevel="${UBOOT_LOGLEVEL:-"6"}" # default to info
+
 	# use `scripts/config` instead of sed if available. Cleaner results.
 	if [[ ! -f scripts/config ]]; then
 		display_alert "scripts/config not found" "u-boot ${version} $BOOTCONFIG ${target_make}" "debug"
@@ -139,8 +141,10 @@ function compile_uboot_target() {
 		fi
 
 		# Hack, up the log level to 6: "info" (default is 4: "warning")
-		display_alert "Hacking log level in u-boot config" "LOGLEVEL=6 for ${target}" "info"
-		run_host_command_logged scripts/config --set-val CONFIG_LOGLEVEL 6
+		display_alert "Hacking log level in u-boot config" "LOGLEVEL=${uboot_loglevel} for ${target}" "info"
+		run_host_command_logged scripts/config --enable CONFIG_LOG
+		run_host_command_logged scripts/config --set-val CONFIG_LOGLEVEL ${uboot_loglevel}
+		run_host_command_logged scripts/config --set-val CONFIG_LOG_MAX_LEVEL ${uboot_loglevel}
 
 		# Include Armbian version so UART bootlogs are drastically more useful
 		run_host_command_logged ./scripts/config --disable "LOCALVERSION_AUTO"
@@ -158,14 +162,14 @@ function compile_uboot_target() {
 		# 0 - emergency ; 1 - alert; 2 - critical; 3 - error; 4 - warning; 5 - note; 6 - info; 7 - debug; 8 - debug content; 9 - debug hardware I/O
 		cat <<- EXTRA_UBOOT_DEBUG_CONFIGS >> .config
 			CONFIG_LOG=y
-			CONFIG_LOG_MAX_LEVEL=7
-			CONFIG_LOG_DEFAULT_LEVEL=7
+			CONFIG_LOG_MAX_LEVEL=${uboot_loglevel}
+			CONFIG_LOG_DEFAULT_LEVEL=${uboot_loglevel}
 			CONFIG_LOG_CONSOLE=y
 			CONFIG_SPL_LOG=y
-			CONFIG_SPL_LOG_MAX_LEVEL=6
+			CONFIG_SPL_LOG_MAX_LEVEL=${uboot_loglevel}
 			CONFIG_SPL_LOG_CONSOLE=y
 			CONFIG_TPL_LOG=y
-			CONFIG_TPL_LOG_MAX_LEVEL=6
+			CONFIG_TPL_LOG_MAX_LEVEL=${uboot_loglevel}
 			CONFIG_TPL_LOG_CONSOLE=y
 			# CONFIG_ERRNO_STR is not set
 		EXTRA_UBOOT_DEBUG_CONFIGS
@@ -458,7 +462,7 @@ function compile_uboot() {
 	display_alert "Preparing u-boot general packaging" "${version} ${target_make}"
 
 	local -a postinst_functions=()
-	local destination=$uboottempdir
+	local destination="${uboottempdir}"
 
 	call_extension_method "pre_package_uboot_image" <<- 'PRE_PACKAGE_UBOOT_IMAGE'
 		*allow making some last minute changes before u-boot is packaged*
@@ -466,6 +470,21 @@ function compile_uboot() {
 		You can write to `$destination` here and it will be packaged.
 		You can also append to the `postinst_functions` array, and the _content_ of those functions will be added to the postinst script.
 	PRE_PACKAGE_UBOOT_IMAGE
+
+	# Let's binwalk each file in the resulting package for analysis purposes
+	display_alert "Analyzing u-boot binaries with binwalk" "${uboot_name}" "info"
+	declare binfile base_binfile
+	find "${uboottempdir}" -type f | grep -v -e "u-boot-defconfig-target-" -e "u-boot-config-target-" -e "u-boot-metadata-target" | sort | while read -r binfile; do
+		base_binfile="$(basename "${binfile}")"
+		display_alert "Analyzing u-boot binary with binwalk" "'${base_binfile}' built on ${HOSTRELEASE}" "info"
+		run_host_command_logged file --brief "${binfile}" "||" true ";" binwalk --run-as=root "${binfile}" "||" true # do not fail, ever
+
+		if [[ "${UBOOT_BINS_TO_OUTPUT}" == "yes" ]]; then
+			display_alert "Copying u-boot binary to output for later binwalk inspection" "'${base_binfile}' built on ${HOSTRELEASE}" "warn"
+			declare target="${SRC}/output/uboot-bin-${uboot_name}-${base_binfile}-host-${HOSTRELEASE}.bin"
+			run_host_command_logged cp -v "${binfile}" "${target}"
+		fi
+	done
 
 	artifact_package_hook_helper_board_side_functions "postinst" uboot_postinst_base "${postinst_functions[@]}"
 	unset uboot_postinst_base postinst_functions destination
@@ -535,7 +554,7 @@ function compile_uboot() {
 	[[ -n $atftempdir && -f $atftempdir/license.md ]] && run_host_command_logged cp "${atftempdir}/license.md" "$uboottempdir/usr/lib/u-boot/LICENSE.atf"
 
 	display_alert "Building u-boot deb" "(version: ${artifact_version})"
-	dpkg_deb_build "$uboottempdir" "uboot"
+	dpkg_deb_build "${uboottempdir}" "uboot"
 
 	[[ -n $atftempdir ]] && rm -rf "${atftempdir:?}" # @TODO: intricate cleanup; u-boot's pkg uses ATF's tempdir...
 
