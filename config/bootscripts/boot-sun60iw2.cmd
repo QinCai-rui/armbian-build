@@ -7,7 +7,7 @@
 setenv kernel_addr_r "0x40080000"    # Standard ARM64 start (DRAM base + 512KB)
 setenv fdt_addr_r    "0x50000000"    # Safe zone: Above U-Boot/ATF
 setenv ramdisk_addr_r "0x51000000"   # Safe zone: 16MB after FDT
-setenv load_addr     "0x50000000"    # Staging area for scripts & overlays
+setenv load_addr      "0x50100000"   # Staging area for scripts & overlays
 setenv overlay_error "false"
 setenv rootdev "/dev/mmcblk0p1"
 setenv verbosity "1"
