@@ -73,7 +73,7 @@ temp_dir=$(mktemp -d)
 
 echo "Compiling the overlay"
 
-cpp -nostdinc -I /usr/src/linux-headers-$(uname -r)/include -I /usr/src/linux-headers-$(uname -r)/include/dt-bindings -undef -x assembler-with-cpp $1 | dtc -@ -q -I dts -O dtb -o ${temp_dir}/${fname}.dtbo
+cpp -nostdinc -I /usr/src/linux-headers-$(uname -r)/include -I /usr/src/linux-headers-$(uname -r)/include/dt-bindings -I /usr/src/linux-headers-$(uname -r)/bsp/include -undef -x assembler-with-cpp $1 | dtc -@ -q -I dts -O dtb -o ${temp_dir}/${fname}.dtbo
 
 if [[ $? -ne 0 ]]; then
 	echo >&2 "Error compiling the overlay"
