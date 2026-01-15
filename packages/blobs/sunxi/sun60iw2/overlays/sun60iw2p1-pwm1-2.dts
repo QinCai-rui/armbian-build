@@ -1,0 +1,37 @@
+/dts-v1/;
+/plugin/;
+
+/ {
+	metadata {
+		title = "Enable PWM1-2";
+		compatible = "radxa,cubie-a7a", "radxa,cubie-a7z", "radxa,cubie-a7s";
+		category = "misc";
+		exclusive = "PD12";
+		description = "Enable PWM1-2.
+On Radxa Cubie A7A this is pin 19.
+On Radxa Cubie A7Z this is pin 19.
+On Radxa Cubie A7S this is pin 19.
+";
+	};
+};
+
+&pio {
+	pwm1_2_pins_active: pwm1-2-pins-active {
+		pins = "PD12";
+		function = "pwm1_2";
+		drive-strength = <10>;
+	};
+
+	pwm1_2_pins_sleep: pwm1-2-pins-sleep {
+		pins = "PD12";
+		function = "gpio_in";
+		bias-pull-down;
+	};
+};
+
+&pwm1_2 {
+	pinctrl-names = "active", "sleep";
+	pinctrl-0 = <&pwm1_2_pins_active>;
+	pinctrl-1 = <&pwm1_2_pins_sleep>;
+	status = "okay";
+};
