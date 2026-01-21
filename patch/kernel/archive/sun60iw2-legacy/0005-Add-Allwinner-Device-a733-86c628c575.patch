@@ -1,6 +1,6 @@
-From aba431f1af11ed2f37c8d07a0c172385aac78343 Mon Sep 17 00:00:00 2001
+From a396ab940ac5eab73b9908c4583125a69f0e4bca Mon Sep 17 00:00:00 2001
 From: Armbian Builder <support@armbian.com>
-Date: Thu, 18 Dec 2025 20:53:04 +0000
+Date: Mon, 12 Jan 2026 05:27:00 +0000
 Subject: [PATCH] Add Allwinner Device a733 86c628c575
 
 ---

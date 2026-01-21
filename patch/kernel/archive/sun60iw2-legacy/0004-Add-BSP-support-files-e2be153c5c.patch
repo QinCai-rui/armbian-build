@@ -1,6 +1,6 @@
-From 811ec77dafc92f9f0d38f0df9df15c297fd36a26 Mon Sep 17 00:00:00 2001
-From: Armbian Builder <builder@armbian.com>
-Date: Thu, 18 Dec 2025 20:53:02 +0000
+From 86893f87d09c4652b5ae0bc1c2fb6cfa935de156 Mon Sep 17 00:00:00 2001
+From: Armbian Builder <support@armbian.com>
+Date: Mon, 12 Jan 2026 05:26:57 +0000
 Subject: [PATCH] Add BSP support files e2be153c5c
 
 ---

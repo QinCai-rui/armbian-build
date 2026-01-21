@@ -2,16 +2,12 @@
 BOARD_NAME="radxa cubie a7a"
 BOARDFAMILY="sun60iw2"
 BOARD_MAINTAINER=""
-OVERLAY_PREFIX="dtbo"
 KERNEL_TARGET="legacy,vendor"
-SRC_EXTLINUX="yes"
 UBOOT_EXTLINUX_ROOT="root=UUID=%%ROOT_PARTUUID%%"
-SRC_CMDLINE="earlycon=sunxi-uart,0x02500000,115200 console=ttyAS0,115200n8 console=tty1 rootwait coherent_pool=2M irqchip.gicv3_pseudo_nmi=0 cgroup_enable=cpuset cgroup_memory=1 cgroup_enable=memory swapaccount=1 kasan=off"
-BOOTSCRIPT="extlinux.conf"
 BOOT_FDT_FILE="allwinner/sun60i-a733-cubie-a7a.dtb"
 IMAGE_PARTITION_TABLE="gpt"
 BOOTFS_TYPE="fat"
-EXTLINUX_UINITRD="no"
-OFFSET=32
+OFFSET=16
+
 enable_extension "radxa-aic8800"
 AIC8800_TYPE="usb"
