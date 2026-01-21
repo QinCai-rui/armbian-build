@@ -49,7 +49,8 @@ MASTER_HEADER
 
 	[[ $HOOK_POINT_CALLS_COUNT -gt $HOOK_POINT_CALLS_UNIQUE_COUNT ]] && {
 		# Some hook points were called multiple times, determine which.
-		HOOK_POINTS_WITH_MULTIPLE_CALLS=$(comm -13 <(sort < "${EXTENSION_MANAGER_TMP_DIR}/hook_point_calls.txt" | uniq) <(sort < "${EXTENSION_MANAGER_TMP_DIR}/hook_point_calls.txt") | sort | uniq | xargs echo -n)
+		# Find duplicates without comm (uutils coreutils compatible)
+		HOOK_POINTS_WITH_MULTIPLE_CALLS=$(sort < "${EXTENSION_MANAGER_TMP_DIR}/hook_point_calls.txt" | uniq -d | xargs echo -n)
 
 		cat << MULTIPLE_CALLS_WARNING
 - *Important:* The following hook points where called multiple times during the documentation generation. This can be indicative of a bug in the build system. Please check the sources for the invocation of the following hooks: \`${HOOK_POINTS_WITH_MULTIPLE_CALLS}\`.
@@ -59,7 +60,7 @@ MULTIPLE_CALLS_WARNING
 
 	cat << PRE_HOOKS_HEADER
 ## Hooks
-- Individual/specific hook functions can be [skipped/ignored/opted-out](/Developer-Guide_Extensions#opt-out-of-individual-hook-functions).
+- Individual/specific hook functions can be [skipped/ignored/opted-out](/Developer-Guide_Extensions#how-to-opt-out-of-a-specific-hook-function).
 - Hooks are listed in the order they are called.
 PRE_HOOKS_HEADER
 

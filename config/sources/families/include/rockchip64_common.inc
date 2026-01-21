@@ -17,7 +17,6 @@ OVERLAY_PREFIX="${OVERLAY_PREFIX:-"rockchip"}" # default to 'rockchip' if not se
 OVERLAY_DIR="/boot/dtb/rockchip/overlay"
 # SERIALCON is handled/defaulted in hook post_family_config__900_late_default_serial_console_by_branch at end of this file
 GOVERNOR="ondemand"
-ATFPATCHDIR='atf-rockchip64'
 BOOTPATCHDIR="${BOOTPATCHDIR:-"u-boot-rockchip64"}"
 PACKAGE_LIST_FAMILY="ethtool"
 RKBIN_DIR="$SRC/cache/sources/rkbin-tools"
@@ -27,13 +26,13 @@ RKBIN_DIR="$SRC/cache/sources/rkbin-tools"
 case $BRANCH in
 
 	current)
-		declare -g KERNEL_MAJOR_MINOR="6.12"
+		declare -g KERNEL_MAJOR_MINOR="6.18"
 		declare -g LINUXFAMILY=rockchip64
 		declare -g LINUXCONFIG='linux-rockchip64-'$BRANCH
 		;;
 
 	edge)
-		declare -g KERNEL_MAJOR_MINOR="6.18"
+		declare -g KERNEL_MAJOR_MINOR="6.19"
 		declare -g LINUXFAMILY=rockchip64
 		declare -g LINUXCONFIG='linux-rockchip64-'$BRANCH
 		;;
@@ -161,6 +160,7 @@ case "$BOOT_SOC" in
 esac
 
 prepare_boot_configuration() {
+	display_alert "Preparing boot configuration" "rockchip64_common::prepare_boot_configuration()" "info"
 	ATFSOURCE=''
 	ATF_COMPILE='no'
 	case "$BOOT_SCENARIO" in
@@ -168,12 +168,10 @@ prepare_boot_configuration() {
 			UBOOT_TARGET_MAP="BL31=bl31.elf idbloader.img u-boot.itb;;idbloader.img u-boot.itb"
 			ATF_COMPILE=yes
 			ATFSOURCE='https://github.com/ARM-software/arm-trusted-firmware'
-			ATF_COMPILER='aarch64-linux-gnu-'
 			ATFDIR='arm-trusted-firmware'
-			ATFBRANCH='tag:v2.13.0'
-			ATF_USE_GCC='> 6.3'
+			ATFBRANCH='tag:v2.13.0' # also adapt ATFPATCHDIR when changing this
+			ATFPATCHDIR='atf-rockchip64/v2.13' # there's also v2.14 patches ready
 			ATF_TARGET_MAP="M0_CROSS_COMPILE=arm-linux-gnueabi- PLAT=$BOOT_SOC bl31;;build/$BOOT_SOC/release/bl31/bl31.elf:bl31.elf"
-			ATF_TOOLCHAIN2="arm-linux-gnueabi-:< 10.0"
 
 			[[ $BOOT_SCENARIO == tpl-blob-atf-mainline ]] &&
 				UBOOT_TARGET_MAP="BL31=bl31.elf idbloader.img u-boot.itb;;idbloader.img u-boot.itb"
