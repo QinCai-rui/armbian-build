@@ -5,7 +5,7 @@ Subject: [PATCH] fix: add device tree
 
 Signed-off-by: ZHANG Yuntian <yt@radxa.com>
 ---
- arch/arm64/boot/dts/allwinner/Makefile | 3 ++
+ src/arch/arm64/boot/dts/allwinner/Makefile | 3 ++
  1 file changed, 3 insertion(+)
 
 diff --git a/arch/arm64/boot/dts/allwinner/Makefile b/arch/arm64/boot/dts/allwinner/Makefile

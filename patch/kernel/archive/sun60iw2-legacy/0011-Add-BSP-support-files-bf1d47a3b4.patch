@@ -1,7 +1,7 @@
-From 86893f87d09c4652b5ae0bc1c2fb6cfa935de156 Mon Sep 17 00:00:00 2001
+From 05c6e386a47a66a59befda45c43c52f7159f9aa5 Mon Sep 17 00:00:00 2001
 From: Armbian Builder <support@armbian.com>
-Date: Mon, 12 Jan 2026 05:26:57 +0000
-Subject: [PATCH] Add BSP support files e2be153c5c
+Date: Fri, 23 Jan 2026 03:17:41 +0000
+Subject: [PATCH] Add BSP support files bf1d47a3b4
 
 ---
  Makefile                                      |    4 +
@@ -202,20 +202,20 @@ Subject: [PATCH] Add BSP support files e2be153c5c
  create mode 100644 include/dt-bindings/spi/sunxi-spi.h
 
 diff --git a/Makefile b/Makefile
-index c01c777a880e..4824581cf3ce 100644
+index c01c777a880e..ed99ae05f8fb 100644
 --- a/Makefile
 +++ b/Makefile
-@@ -4,6 +4,10 @@ PATCHLEVEL = 15
- SUBLEVEL = 147
- EXTRAVERSION =
- NAME = Trick or Treat
+@@ -10,6 +10,10 @@ NAME = Trick or Treat
+ # More info can be located in ./README
+ # Comments in this file are targeted only to the developer, do not
+ # expect to learn how to build the kernel reading this file.
 +export BSP_TOP := bsp/
 +export LICHEE_KERN_DIR := ./
 +export KBUILD_DEFCONFIG := bsp.config
 +
  
- # *DOCUMENTATION*
- # To see a list of typical targets execute "make help"
+ $(if $(filter __%, $(MAKECMDGOALS)), \
+ 	$(error targets prefixed with '__' are only for internal use))
 diff --git a/arch/arm64/boot/dts/allwinner/sun50iw10p1-clk.dtsi b/arch/arm64/boot/dts/allwinner/sun50iw10p1-clk.dtsi
 new file mode 100644
 index 000000000000..7565d252a2bc
