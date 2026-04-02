@@ -1,0 +1,58 @@
+From b882ed01cd4357566815504501bf9fd19be2b4c9 Mon Sep 17 00:00:00 2001
+From: Nick Alilovic <nickalilovic@gmail.com>
+Date: Mon, 23 Mar 2026 22:38:35 -0400
+Subject: [PATCH] drivers: npu: fix spinlock function scope mismatch
+
+Fixed "static declaration follows non-static declaration" errors by
+removing the static keyword from spinlock functions in vip_drv_os.c.
+
+This ensures the implementation matches the global declarations in
+vip_drv_os_port.h, satisfying stricter scoping rules in modern
+GCC/LLVM toolchains used for the 6.18 kernel build.
+---
+ drivers/npu/aw_nna_vip/vip2/os/linux/vip_drv_os.c | 8 ++++----
+ 1 file changed, 4 insertions(+), 4 deletions(-)
+
+diff --git a/bsp/drivers/npu/aw_nna_vip/vip2/os/linux/vip_drv_os.c b/bsp/drivers/npu/aw_nna_vip/vip2/os/linux/vip_drv_os.c
+index 968d0a95..1d289f98 100755
+--- a/bsp/drivers/npu/aw_nna_vip/vip2/os/linux/vip_drv_os.c
++++ b/bsp/drivers/npu/aw_nna_vip/vip2/os/linux/vip_drv_os.c
+@@ -729,7 +729,7 @@ vip_status_e vipdrv_os_destroy_mutex(
+     return status;
+ }
+ 
+-static vip_status_e vipdrv_os_create_spinlock(
++vip_status_e vipdrv_os_create_spinlock(
+     vipdrv_spinlock *spinlock
+     )
+ {
+@@ -748,7 +748,7 @@ static vip_status_e vipdrv_os_create_spinlock(
+     return status;
+ }
+ 
+-static vip_status_e vipdrv_os_lock_spinlock(
++vip_status_e vipdrv_os_lock_spinlock(
+     vipdrv_spinlock spinlock
+     )
+ {
+@@ -763,7 +763,7 @@ static vip_status_e vipdrv_os_lock_spinlock(
+ 
+ }
+ 
+-static vip_status_e vipdrv_os_unlock_spinlock(
++vip_status_e vipdrv_os_unlock_spinlock(
+     vipdrv_spinlock spinlock
+     )
+ {
+@@ -777,7 +777,7 @@ static vip_status_e vipdrv_os_unlock_spinlock(
+     return status;
+ }
+ 
+-static vip_status_e vipdrv_os_destroy_spinlock(
++vip_status_e vipdrv_os_destroy_spinlock(
+     vipdrv_spinlock spinlock
+     )
+ {
+-- 
+2.51.0
+

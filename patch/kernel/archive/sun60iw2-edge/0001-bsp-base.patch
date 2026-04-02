@@ -1,0 +1,68 @@
+diff --git a/Kconfig b/Kconfig
+index 307e581144de..f495ddbf70bb 100644
+--- a/Kconfig
++++ b/Kconfig
+@@ -9,6 +9,8 @@ source "scripts/Kconfig.include"
+ 
+ source "init/Kconfig"
+ 
++source "bsp/Kconfig"
++
+ source "kernel/Kconfig.freezer"
+ 
+ source "fs/Kconfig.binfmt"
+diff --git a/Makefile b/Makefile
+index 67c2f5dbb198..fb2ffe967360 100644
+--- a/Makefile
++++ b/Makefile
+@@ -580,6 +580,7 @@ LINUXINCLUDE    := \
+ 		-I$(objtree)/arch/$(SRCARCH)/include/generated \
+ 		-I$(srctree)/include \
+ 		-I$(objtree)/include \
++		-I$(srctree)/bsp/include \
+ 		$(USERINCLUDE)
+ 
+ KBUILD_AFLAGS   := -D__ASSEMBLY__ -fno-PIE
+@@ -791,6 +792,7 @@ ifeq ($(KBUILD_EXTMOD),)
+ # Objects we will link into vmlinux / subdirs we need to visit
+ core-y		:=
+ drivers-y	:=
++drivers-y	+= bsp/
+ libs-y		:= lib/
+ endif # KBUILD_EXTMOD
+ 
+@@ -1367,6 +1369,13 @@ PHONY += headers_install
+ headers_install: headers
+ 	$(call cmd,headers_install)
+ 
++IS_AOSP = $(shell if [ -d "$(srctree)/android" ] && [ -n "$(KBUILD_EXTMOD)" ]; then echo "y"; fi)
++ifneq ($(IS_AOSP), y)
++	hdr-inst-bsp := -f $(srctree)/bsp/scripts/Makefile.headersinst obj
++else
++	hdr-inst-bsp := -f $(srctree)/bsp/scripts/Makefile.headersinst dst=$(KBUILD_EXTMOD)/usr/include/bsp obj
++endif
++
+ PHONY += archheaders archscripts
+ 
+ hdr-inst := -f $(srctree)/scripts/Makefile.headersinst obj
+@@ -1379,6 +1388,9 @@ else
+ 	$(Q)$(MAKE) $(hdr-inst)=include/uapi
+ 	$(Q)$(MAKE) $(hdr-inst)=arch/$(SRCARCH)/include/uapi
+ endif
++ifneq ($(wildcard $(srctree)/bsp/scripts/Makefile.headersinst),)
++	$(Q)$(MAKE) $(hdr-inst-bsp)=bsp/include/uapi
++endif
+ 
+ ifdef CONFIG_HEADERS_INSTALL
+ prepare: headers
+diff --git a/arch/arm64/boot/dts/allwinner/Makefile b/arch/arm64/boot/dts/allwinner/Makefile
+index 2edfa7bf4ab3..792e743a8020 100644
+--- a/arch/arm64/boot/dts/allwinner/Makefile
++++ b/arch/arm64/boot/dts/allwinner/Makefile
+@@ -59,3 +59,6 @@ dtb-$(CONFIG_ARCH_SUNXI) += sun55i-a527-cubie-a5e.dtb
+ dtb-$(CONFIG_ARCH_SUNXI) += sun55i-h728-x96qpro+.dtb
+ dtb-$(CONFIG_ARCH_SUNXI) += sun55i-t527-avaota-a1.dtb
+ dtb-$(CONFIG_ARCH_SUNXI) += sun55i-t527-orangepi-4a.dtb
++dtb-$(CONFIG_ARCH_SUNXI) += sun60i-a733-cubie-a7a.dtb
++dtb-$(CONFIG_ARCH_SUNXI) += sun60i-a733-cubie-a7s.dtb
++dtb-$(CONFIG_ARCH_SUNXI) += sun60i-a733-cubie-a7z.dtb

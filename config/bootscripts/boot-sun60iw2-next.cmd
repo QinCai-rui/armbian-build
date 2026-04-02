@@ -4,10 +4,7 @@
 #
 
 # default values
-setenv kernel_addr_r "0x40080000"    # Standard ARM64 start (DRAM base + 512KB)
-setenv fdt_addr_r    "0x50000000"    # Safe zone: Above U-Boot/ATF
-setenv ramdisk_addr_r "0x51000000"   # Safe zone: 16MB after FDT
-setenv load_addr      "0x50100000"   # Staging area for scripts & overlays
+setenv load_addr "0x45000000"
 setenv overlay_error "false"
 setenv rootdev "/dev/mmcblk0p1"
 setenv verbosity "1"
@@ -15,9 +12,6 @@ setenv rootfstype "ext4"
 setenv console "both"
 setenv docker_optimizations "on"
 setenv bootlogo "false"
-setenv image_name "Image"
-setenv ramdisk_file "uInitrd"
-setenv serialcon "ttyS0"
 
 setenv vendor "allwinner"
 
@@ -73,8 +67,8 @@ else
 	fi
 fi
 
-if test "${console}" = "display" || test "${console}" = "both"; then setenv consoleargs "console=${serialcon},115200 console=tty1"; fi
-if test "${console}" = "serial"; then setenv consoleargs "console=${serialcon},115200"; fi
+if test "${console}" = "display" || test "${console}" = "both"; then setenv consoleargs "console=ttyS0,115200 console=tty1"; fi
+if test "${console}" = "serial"; then setenv consoleargs "console=ttyS0,115200"; fi
 if test "${bootlogo}" = "true"; then
 	setenv consoleargs "splash plymouth.ignore-serial-consoles ${consoleargs}"
 else
@@ -119,11 +113,10 @@ else
 	fi
 fi
 
-load ${devtype} ${devnum} ${kernel_addr_r} ${prefix}${image_name}
-load ${devtype} ${devnum}:${distro_bootpart} ${ramdisk_addr_r} ${prefix}${ramdisk_file}
+load ${devtype} ${devnum} ${ramdisk_addr_r} ${prefix}uInitrd
+load ${devtype} ${devnum} ${kernel_addr_r} ${prefix}Image
 
-booti ${kernel_addr_r} ${ramdisk_addr_r}:${filesize} ${fdt_addr_r}
-
+booti ${kernel_addr_r} ${ramdisk_addr_r} ${fdt_addr_r}
 
 # Recompile with:
 # mkimage -C none -A arm -T script -d /boot/boot.cmd /boot/boot.scr

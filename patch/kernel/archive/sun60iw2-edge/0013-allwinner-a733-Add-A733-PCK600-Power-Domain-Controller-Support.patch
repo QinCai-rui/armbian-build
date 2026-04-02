@@ -1,0 +1,149 @@
+From: Yuanshen Cao <alex.caoys@gmail.com>
+Date: Thu, 05 Mar 2026 03:34:07 +0000
+Subject: [PATCH v2 1/2] dt-bindings: power: Add Support for Allwinner A733 PCK600 Power Domain Controller
+
+The A733 PCK600, similar to A523 PCK600, is likely a customized version
+of ARM PCK-600 power controller. They share the same BSP drivers in the
+package provided by Radxa, with the only difference being the lack of
+resets.
+
+Therefore, document A733 compatible and make resets required only for
+the other models, as well as prepare the PD definitions for future
+device trees.
+
+Reviewed-by: Krzysztof Kozlowski <krzysztof.kozlowski@oss.qualcomm.com>
+Signed-off-by: Yuanshen Cao <alex.caoys@gmail.com>
+---
+ .../bindings/power/allwinner,sun20i-d1-ppu.yaml        | 17 ++++++++++++++++-
+ .../dt-bindings/power/allwinner,sun60i-a733-pck-600.h  | 18 ++++++++++++++++++
+ 2 files changed, 34 insertions(+), 1 deletion(-)
+
+diff --git a/Documentation/devicetree/bindings/power/allwinner,sun20i-d1-ppu.yaml b/Documentation/devicetree/bindings/power/allwinner,sun20i-d1-ppu.yaml
+index a28e75a9cb6a..b97361ce2a00 100644
+--- a/Documentation/devicetree/bindings/power/allwinner,sun20i-d1-ppu.yaml
++++ b/Documentation/devicetree/bindings/power/allwinner,sun20i-d1-ppu.yaml
+@@ -20,6 +20,7 @@ properties:
+       - allwinner,sun20i-d1-ppu
+       - allwinner,sun55i-a523-pck-600
+       - allwinner,sun55i-a523-ppu
++      - allwinner,sun60i-a733-pck-600
+ 
+   reg:
+     maxItems: 1
+@@ -38,9 +39,23 @@ required:
+   - compatible
+   - reg
+   - clocks
+-  - resets
+   - '#power-domain-cells'
+ 
++allOf:
++  - if:
++      properties:
++        compatible:
++          contains:
++            enum:
++              - allwinner,sun8i-v853-ppu
++              - allwinner,sun20i-d1-ppu
++              - allwinner,sun55i-a523-pck-600
++              - allwinner,sun55i-a523-ppu
++
++    then:
++      required:
++        - resets
++
+ additionalProperties: false
+ 
+ examples:
+diff --git a/include/dt-bindings/power/allwinner,sun60i-a733-pck-600.h b/include/dt-bindings/power/allwinner,sun60i-a733-pck-600.h
+new file mode 100644
+index 000000000000..cf476a005b55
+--- /dev/null
++++ b/include/dt-bindings/power/allwinner,sun60i-a733-pck-600.h
+@@ -0,0 +1,18 @@
++/* SPDX-License-Identifier: (GPL-2.0-only OR BSD-2-Clause) */
++
++#ifndef _DT_BINDINGS_POWER_SUN60I_A733_PCK600_H_
++#define _DT_BINDINGS_POWER_SUN60I_A733_PCK600_H_
++
++#define PD_VI			0
++#define PD_DE_SYS		1
++#define PD_VE_DEC		2
++#define PD_VE_ENC		3
++#define PD_NPU			4
++#define PD_GPU_TOP		5
++#define PD_GPU_CORE		6
++#define PD_PCIE			7
++#define PD_USB2			8
++#define PD_VO			9
++#define PD_VO1			10
++
++#endif /* _DT_BINDINGS_POWER_SUN60I_A733_PCK600_H_ */
+
+diff --git a/drivers/pmdomain/sunxi/sun55i-pck600.c b/drivers/pmdomain/sunxi/sun55i-pck600.c
+index c7ab51514531..1d47bbd35ced 100644
+--- a/drivers/pmdomain/sunxi/sun55i-pck600.c
++++ b/drivers/pmdomain/sunxi/sun55i-pck600.c
+@@ -52,6 +52,7 @@ struct sunxi_pck600_desc {
+ 	u32 logic_power_switch0_delay;
+ 	u32 logic_power_switch1_delay;
+ 	u32 off2on_delay;
++	bool has_rst_clk;
+ };
+ 
+ struct sunxi_pck600_pd {
+@@ -151,9 +152,11 @@ static int sunxi_pck600_probe(struct platform_device *pdev)
+ 	if (IS_ERR(base))
+ 		return PTR_ERR(base);
+ 
+-	rst = devm_reset_control_get_exclusive_released(dev, NULL);
+-	if (IS_ERR(rst))
+-		return dev_err_probe(dev, PTR_ERR(rst), "failed to get reset control\n");
++	if (desc->has_rst_clk) {
++		rst = devm_reset_control_get_exclusive_released(dev, NULL);
++		if (IS_ERR(rst))
++			return dev_err_probe(dev, PTR_ERR(rst), "failed to get reset control\n");
++	}
+ 
+ 	clk = devm_clk_get_enabled(dev, NULL);
+ 	if (IS_ERR(clk))
+@@ -206,7 +209,27 @@ static const struct sunxi_pck600_desc sun55i_a523_pck600_desc = {
+ 	.device_ctrl1_delay = 0xffff,
+ 	.logic_power_switch0_delay = 0x8080808,
+ 	.logic_power_switch1_delay = 0x808,
+-	.off2on_delay = 0x8
++	.off2on_delay = 0x8,
++	.has_rst_clk = true,
++};
++
++static const char * const sun60i_a733_pck600_pd_names[] = {
++	"VI", "DE_SYS", "VE_DEC", "VE_ENC", "NPU",
++	"GPU_TOP", "GPU_CORE", "PCIE", "USB2", "VO", "VO1"
++};
++
++static const struct sunxi_pck600_desc sun60i_a733_pck600_desc = {
++	.pd_names = sun60i_a733_pck600_pd_names,
++	.num_domains = ARRAY_SIZE(sun60i_a733_pck600_pd_names),
++	.logic_power_switch0_delay_offset = 0xc00,
++	.logic_power_switch1_delay_offset = 0xc04,
++	.off2on_delay_offset = 0xc10,
++	.device_ctrl0_delay = 0x1f1f1f,
++	.device_ctrl1_delay = 0x1f1f,
++	.logic_power_switch0_delay = 0x8080808,
++	.logic_power_switch1_delay = 0x808,
++	.off2on_delay = 0x8,
++	.has_rst_clk = false,
+ };
+ 
+ static const struct of_device_id sunxi_pck600_of_match[] = {
+@@ -214,6 +237,10 @@ static const struct of_device_id sunxi_pck600_of_match[] = {
+ 		.compatible	= "allwinner,sun55i-a523-pck-600",
+ 		.data		= &sun55i_a523_pck600_desc,
+ 	},
++	{
++		.compatible	= "allwinner,sun60i-a733-pck-600",
++		.data		= &sun60i_a733_pck600_desc,
++	},
+ 	{}
+ };
+ MODULE_DEVICE_TABLE(of, sunxi_pck600_of_match);

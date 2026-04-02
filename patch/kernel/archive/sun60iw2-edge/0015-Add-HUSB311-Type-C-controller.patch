@@ -1,0 +1,191 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Alexey Charkov <alchark@flipper.net>
+Date: Wed, 18 Mar 2026 18:32:53 +0400
+Subject: [PATCH v4 1/4] dt-bindings: vendor-prefixes: Add Hynetek Semiconductor Co., Ltd.
+
+Hynetek Semiconductor Co., Ltd. focuses on intelligent energy control
+technology, mainly for the intelligent fast charging and digital energy
+fields.
+
+Link: https://en.hynetek.com/
+Acked-by: Conor Dooley <conor.dooley@microchip.com>
+Signed-off-by: Alexey Charkov <alchark@flipper.net>
+---
+ Documentation/devicetree/bindings/vendor-prefixes.yaml | 2 ++
+ 1 file changed, 2 insertions(+)
+
+diff --git a/Documentation/devicetree/bindings/vendor-prefixes.yaml b/Documentation/devicetree/bindings/vendor-prefixes.yaml
+index 5a806faf7170..3ffb1a8e24af 100644
+--- a/Documentation/devicetree/bindings/vendor-prefixes.yaml
++++ b/Documentation/devicetree/bindings/vendor-prefixes.yaml
+@@ -747,6 +747,8 @@ patternProperties:
+     description: Hycon Technology Corp.
+   "^hydis,.*":
+     description: Hydis Technologies
++  "^hynetek,.*":
++    description: Hynetek Semiconductor Co., Ltd.
+   "^hynitron,.*":
+     description: Shanghai Hynitron Microelectronics Co. Ltd.
+   "^hynix,.*":
+
+diff --git a/Documentation/devicetree/bindings/usb/richtek,rt1711h.yaml b/Documentation/devicetree/bindings/usb/richtek,rt1711h.yaml
+index 1eb611f35998..210090308e7c 100644
+--- a/Documentation/devicetree/bindings/usb/richtek,rt1711h.yaml
++++ b/Documentation/devicetree/bindings/usb/richtek,rt1711h.yaml
+@@ -18,10 +18,14 @@ description: |
+ 
+ properties:
+   compatible:
+-    enum:
+-      - etekmicro,et7304
+-      - richtek,rt1711h
+-      - richtek,rt1715
++    oneOf:
++      - enum:
++          - richtek,rt1711h
++          - richtek,rt1715
++      - items:
++          - enum:
++              - etekmicro,et7304
++          - const: richtek,rt1715
+     description:
+       RT1711H support PD20, ET7304 and RT1715 support PD30 except Fast Role Swap.
+ 
+
+diff --git a/Documentation/devicetree/bindings/usb/richtek,rt1711h.yaml b/Documentation/devicetree/bindings/usb/richtek,rt1711h.yaml
+index 210090308e7c..7ded36384518 100644
+--- a/Documentation/devicetree/bindings/usb/richtek,rt1711h.yaml
++++ b/Documentation/devicetree/bindings/usb/richtek,rt1711h.yaml
+@@ -22,12 +22,17 @@ properties:
+       - enum:
+           - richtek,rt1711h
+           - richtek,rt1715
++      - items:
++          - enum:
++              - hynetek,husb311
++          - const: richtek,rt1711h
+       - items:
+           - enum:
+               - etekmicro,et7304
+           - const: richtek,rt1715
+     description:
+       RT1711H support PD20, ET7304 and RT1715 support PD30 except Fast Role Swap.
++      HUSB311 is a rebrand of RT1711H which is pin and register compatible.
+ 
+   reg:
+     maxItems: 1
+
+diff --git a/drivers/usb/typec/tcpm/tcpci_rt1711h.c b/drivers/usb/typec/tcpm/tcpci_rt1711h.c
+index 37cf55ad74f8..4b3e4e22a82e 100644
+--- a/drivers/usb/typec/tcpm/tcpci_rt1711h.c
++++ b/drivers/usb/typec/tcpm/tcpci_rt1711h.c
+@@ -18,13 +18,6 @@
+ #include <linux/regmap.h>
+ #include <linux/regulator/consumer.h>
+ 
+-#define RT1711H_VID		0x29CF
+-#define ET7304_VID		0x6DCF
+-#define RT1711H_PID		0x1711
+-#define RT1711H_DID		0x2171
+-#define RT1715_DID		0x2173
+-#define ET7304_DID		0x2173
+-
+ #define RT1711H_PHYCTRL1	0x80
+ #define RT1711H_PHYCTRL2	0x81
+ 
+@@ -57,8 +50,6 @@
+ 
+ struct rt1711h_chip_info {
+ 	u32 rxdz_sel;
+-	u16 vid;
+-	u16 did;
+ 	bool enable_pd30_extended_message;
+ };
+ 
+@@ -304,35 +295,6 @@ static int rt1711h_sw_reset(struct rt1711h_chip *chip)
+ 	return 0;
+ }
+ 
+-static int rt1711h_check_revision(struct i2c_client *i2c, struct rt1711h_chip *chip)
+-{
+-	int ret;
+-
+-	ret = i2c_smbus_read_word_data(i2c, TCPC_VENDOR_ID);
+-	if (ret < 0)
+-		return ret;
+-	if (ret != chip->info->vid) {
+-		dev_err(&i2c->dev, "vid is not correct, 0x%04x\n", ret);
+-		return -ENODEV;
+-	}
+-	ret = i2c_smbus_read_word_data(i2c, TCPC_PRODUCT_ID);
+-	if (ret < 0)
+-		return ret;
+-	if (ret != RT1711H_PID) {
+-		dev_err(&i2c->dev, "pid is not correct, 0x%04x\n", ret);
+-		return -ENODEV;
+-	}
+-	ret = i2c_smbus_read_word_data(i2c, TCPC_BCD_DEV);
+-	if (ret < 0)
+-		return ret;
+-	if (ret != chip->info->did) {
+-		dev_err(&i2c->dev, "did is not correct, 0x%04x\n", ret);
+-		return -ENODEV;
+-	}
+-	dev_dbg(&i2c->dev, "did is 0x%04x\n", ret);
+-	return ret;
+-}
+-
+ static int rt1711h_probe(struct i2c_client *client)
+ {
+ 	int ret;
+@@ -349,12 +311,6 @@ static int rt1711h_probe(struct i2c_client *client)
+ 
+ 	chip->info = i2c_get_match_data(client);
+ 
+-	ret = rt1711h_check_revision(client, chip);
+-	if (ret < 0) {
+-		dev_err(&client->dev, "check vid/pid fail\n");
+-		return ret;
+-	}
+-
+ 	chip->data.regmap = devm_regmap_init_i2c(client,
+ 						 &rt1711h_regmap_config);
+ 	if (IS_ERR(chip->data.regmap))
+@@ -408,27 +364,16 @@ static void rt1711h_remove(struct i2c_client *client)
+ 	tcpci_unregister_port(chip->tcpci);
+ }
+ 
+-static const struct rt1711h_chip_info et7304 = {
+-	.rxdz_sel = RT1711H_BMCIO_RXDZSEL,
+-	.vid = ET7304_VID,
+-	.did = ET7304_DID,
+-	.enable_pd30_extended_message = true,
+-};
+-
+ static const struct rt1711h_chip_info rt1711h = {
+-	.vid = RT1711H_VID,
+-	.did = RT1711H_DID,
+ };
+ 
+ static const struct rt1711h_chip_info rt1715 = {
+ 	.rxdz_sel = RT1711H_BMCIO_RXDZSEL,
+-	.vid = RT1711H_VID,
+-	.did = RT1715_DID,
+ 	.enable_pd30_extended_message = true,
+ };
+ 
+ static const struct i2c_device_id rt1711h_id[] = {
+-	{ "et7304", (kernel_ulong_t)&et7304 },
++	{ "et7304", (kernel_ulong_t)&rt1715 },
+ 	{ "rt1711h", (kernel_ulong_t)&rt1711h },
+ 	{ "rt1715", (kernel_ulong_t)&rt1715 },
+ 	{}
+@@ -436,7 +381,7 @@ static const struct i2c_device_id rt1711h_id[] = {
+ MODULE_DEVICE_TABLE(i2c, rt1711h_id);
+ 
+ static const struct of_device_id rt1711h_of_match[] = {
+-	{ .compatible = "etekmicro,et7304", .data = &et7304 },
++	{ .compatible = "etekmicro,et7304", .data = &rt1715 },
+ 	{ .compatible = "richtek,rt1711h", .data = &rt1711h },
+ 	{ .compatible = "richtek,rt1715", .data = &rt1715 },
+ 	{}

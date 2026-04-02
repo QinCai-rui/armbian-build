@@ -1,0 +1,113 @@
+From: Yuanshen Cao <alex.caoys@gmail.com>
+Date: Fri, 20 Feb 2026 06:22:40 +0000
+Subject: [PATCH v3 1/2] dt-bindings: usb: document the Etek ET7304 USB Type-C Port Controller
+
+Document the ETEK Micro ET7304 USB Type-C Port Controller with USB-PD.
+
+Signed-off-by: Yuanshen Cao <alex.caoys@gmail.com>
+Reviewed-by: Krzysztof Kozlowski <krzysztof.kozlowski@oss.qualcomm.com>
+---
+ Documentation/devicetree/bindings/usb/richtek,rt1711h.yaml | 3 ++-
+ Documentation/devicetree/bindings/vendor-prefixes.yaml     | 2 ++
+ 2 files changed, 4 insertions(+), 1 deletion(-)
+
+diff --git a/Documentation/devicetree/bindings/usb/richtek,rt1711h.yaml b/Documentation/devicetree/bindings/usb/richtek,rt1711h.yaml
+index ae611f7e57ca..1eb611f35998 100644
+--- a/Documentation/devicetree/bindings/usb/richtek,rt1711h.yaml
++++ b/Documentation/devicetree/bindings/usb/richtek,rt1711h.yaml
+@@ -19,10 +19,11 @@ description: |
+ properties:
+   compatible:
+     enum:
++      - etekmicro,et7304
+       - richtek,rt1711h
+       - richtek,rt1715
+     description:
+-      RT1711H support PD20, RT1715 support PD30 except Fast Role Swap.
++      RT1711H support PD20, ET7304 and RT1715 support PD30 except Fast Role Swap.
+ 
+   reg:
+     maxItems: 1
+diff --git a/Documentation/devicetree/bindings/vendor-prefixes.yaml b/Documentation/devicetree/bindings/vendor-prefixes.yaml
+index ee7fd3cfe203..5e504cebbcda 100644
+--- a/Documentation/devicetree/bindings/vendor-prefixes.yaml
++++ b/Documentation/devicetree/bindings/vendor-prefixes.yaml
+@@ -541,6 +541,8 @@ patternProperties:
+     description: ESTeem Wireless Modems
+   "^eswin,.*":
+     description: Beijing ESWIN Technology Group Co. Ltd.
++  "^etekmicro,.*":
++    description: Wuxi ETEK Micro-Electronics Co.,Ltd.
+   "^ettus,.*":
+     description: NI Ettus Research
+   "^eukrea,.*":
+
+diff --git a/drivers/usb/typec/tcpm/tcpci_rt1711h.c b/drivers/usb/typec/tcpm/tcpci_rt1711h.c
+index 88c50b984e8a..37cf55ad74f8 100644
+--- a/drivers/usb/typec/tcpm/tcpci_rt1711h.c
++++ b/drivers/usb/typec/tcpm/tcpci_rt1711h.c
+@@ -19,9 +19,11 @@
+ #include <linux/regulator/consumer.h>
+ 
+ #define RT1711H_VID		0x29CF
++#define ET7304_VID		0x6DCF
+ #define RT1711H_PID		0x1711
+ #define RT1711H_DID		0x2171
+ #define RT1715_DID		0x2173
++#define ET7304_DID		0x2173
+ 
+ #define RT1711H_PHYCTRL1	0x80
+ #define RT1711H_PHYCTRL2	0x81
+@@ -55,6 +57,7 @@
+ 
+ struct rt1711h_chip_info {
+ 	u32 rxdz_sel;
++	u16 vid;
+ 	u16 did;
+ 	bool enable_pd30_extended_message;
+ };
+@@ -308,7 +311,7 @@ static int rt1711h_check_revision(struct i2c_client *i2c, struct rt1711h_chip *c
+ 	ret = i2c_smbus_read_word_data(i2c, TCPC_VENDOR_ID);
+ 	if (ret < 0)
+ 		return ret;
+-	if (ret != RT1711H_VID) {
++	if (ret != chip->info->vid) {
+ 		dev_err(&i2c->dev, "vid is not correct, 0x%04x\n", ret);
+ 		return -ENODEV;
+ 	}
+@@ -405,17 +408,27 @@ static void rt1711h_remove(struct i2c_client *client)
+ 	tcpci_unregister_port(chip->tcpci);
+ }
+ 
++static const struct rt1711h_chip_info et7304 = {
++	.rxdz_sel = RT1711H_BMCIO_RXDZSEL,
++	.vid = ET7304_VID,
++	.did = ET7304_DID,
++	.enable_pd30_extended_message = true,
++};
++
+ static const struct rt1711h_chip_info rt1711h = {
++	.vid = RT1711H_VID,
+ 	.did = RT1711H_DID,
+ };
+ 
+ static const struct rt1711h_chip_info rt1715 = {
+ 	.rxdz_sel = RT1711H_BMCIO_RXDZSEL,
++	.vid = RT1711H_VID,
+ 	.did = RT1715_DID,
+ 	.enable_pd30_extended_message = true,
+ };
+ 
+ static const struct i2c_device_id rt1711h_id[] = {
++	{ "et7304", (kernel_ulong_t)&et7304 },
+ 	{ "rt1711h", (kernel_ulong_t)&rt1711h },
+ 	{ "rt1715", (kernel_ulong_t)&rt1715 },
+ 	{}
+@@ -423,6 +436,7 @@ static const struct i2c_device_id rt1711h_id[] = {
+ MODULE_DEVICE_TABLE(i2c, rt1711h_id);
+ 
+ static const struct of_device_id rt1711h_of_match[] = {
++	{ .compatible = "etekmicro,et7304", .data = &et7304 },
+ 	{ .compatible = "richtek,rt1711h", .data = &rt1711h },
+ 	{ .compatible = "richtek,rt1715", .data = &rt1715 },
+ 	{}
