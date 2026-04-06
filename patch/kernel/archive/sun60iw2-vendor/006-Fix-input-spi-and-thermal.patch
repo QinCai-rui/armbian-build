@@ -1,0 +1,62 @@
+From eb1863a9071a61fb6f80361595e37aff669fe12e Mon Sep 17 00:00:00 2001
+From: Alex Cao <alexcaoys@users.noreply.github.com>
+Date: Sun, 1 Feb 2026 21:47:16 -0500
+Subject: [PATCH] fix for Linux 6.6
+
+---
+ bsp/drivers/input/init-input.c      | 4 ++--
+ bsp/drivers/spi/spi-sunxi.c         | 1 -
+ bsp/drivers/thermal/sunxi_thermal.c | 4 ++--
+ 3 files changed, 4 insertions(+), 5 deletions(-)
+
+diff --git a/bsp/drivers/input/init-input.c b/bsp/drivers/input/init-input.c
+index 39cb7bc3..fb5808ea 100644
+--- a/bsp/drivers/input/init-input.c
++++ b/bsp/drivers/input/init-input.c
+@@ -996,10 +996,10 @@ int input_set_int_enable_force(enum input_sensor_type *input_type, u32 enable)
+ 	if ((enable != 0) && (enable != 1))
+ 		return ret;
+ 
+-	desc = irq_to_desc(irq_number);
++	desc = irq_data_to_desc(irq_get_irq_data(irq_number));
+ 	if (enable == 1) {
+ 		while (desc->depth >= 1)
+-			enable_irq(irq_number);
++		enable_irq(irq_number);
+ 	} else {
+ 		disable_irq_nosync(irq_number);
+ 	}
+diff --git a/bsp/drivers/spi/spi-sunxi.c b/bsp/drivers/spi/spi-sunxi.c
+index d6b87b3b..e47dac77 100644
+--- a/bsp/drivers/spi/spi-sunxi.c
++++ b/bsp/drivers/spi/spi-sunxi.c
+@@ -2161,7 +2161,6 @@ int sunxi_spi_sync_atomic(struct spi_device *spi, struct spi_message *message)
+ out:
+ 	message->status = ret;
+ 	ctlr->cur_msg = NULL;
+-	ctlr->cur_msg_prepared = false;
+ 
+ 	return ret;
+ }
+diff --git a/bsp/drivers/thermal/sunxi_thermal.c b/bsp/drivers/thermal/sunxi_thermal.c
+index bbe35d20..f2382e2e 100644
+--- a/bsp/drivers/thermal/sunxi_thermal.c
++++ b/bsp/drivers/thermal/sunxi_thermal.c
+@@ -943,7 +943,7 @@ static int sunxi_ths_register(struct ths_device *tmdev)
+ 		if (IS_ERR(tmdev->sensor[i].tzd))
+ 			return PTR_ERR(tmdev->sensor[i].tzd);
+ 
+-		if (devm_thermal_add_hwmon_sysfs(tmdev->sensor[i].tzd))
++		if (devm_thermal_add_hwmon_sysfs(tmdev->dev, tmdev->sensor[i].tzd))
+ 			dev_warn(tmdev->dev,
+ 				 "Failed to add hwmon sysfs attributes\n");
+ 	}
+@@ -966,7 +966,7 @@ static int sunxi_ths_register(struct ths_device *tmdev)
+ 		if (IS_ERR(tmdev->sensor[i].tzd))
+ 			return PTR_ERR(tmdev->sensor[i].tzd);
+ 
+-		if (devm_thermal_add_hwmon_sysfs(tmdev->sensor[i].tzd))
++		if (devm_thermal_add_hwmon_sysfs(tmdev->dev, tmdev->sensor[i].tzd))
+ 			dev_warn(tmdev->dev,
+ 				 "Failed to add hwmon sysfs attributes\n");
+ 	}

@@ -1,0 +1,47 @@
+From 612b282803ae918f222a4b7f5d8e1f867bce8349 Mon Sep 17 00:00:00 2001
+From: ZHANG Yuntian <yt@radxa.com>
+Date: Wed, 16 Jul 2025 07:28:23 +0000
+Subject: [PATCH] thermal: sunxi: register hwmon sysfs
+
+This allow userspace tools to read sensor value.
+
+Signed-off-by: ZHANG Yuntian <yt@radxa.com>
+---
+ bsp/drivers/thermal/sunxi_thermal.c | 10 ++++++++++
+ 1 file changed, 10 insertions(+)
+
+diff --git a/bsp/drivers/thermal/sunxi_thermal.c b/bsp/drivers/thermal/sunxi_thermal.c
+index d30ce32b..bbe35d20 100644
+--- a/bsp/drivers/thermal/sunxi_thermal.c
++++ b/bsp/drivers/thermal/sunxi_thermal.c
+@@ -23,6 +23,8 @@
+ #include "sunxi_critical_handler.h"
+ #endif
+ 
++#include "../../../drivers/thermal/thermal_hwmon.h"
++
+ #define FT_TEMP_MASK				GENMASK(11, 0)
+ #define TEMP_CALIB_MASK				GENMASK(11, 0)
+ #define CALIBRATE_DEFAULT			0x800
+@@ -940,6 +942,10 @@ static int sunxi_ths_register(struct ths_device *tmdev)
+ 							     &ths_ops);
+ 		if (IS_ERR(tmdev->sensor[i].tzd))
+ 			return PTR_ERR(tmdev->sensor[i].tzd);
++
++		if (devm_thermal_add_hwmon_sysfs(tmdev->sensor[i].tzd))
++			dev_warn(tmdev->dev,
++				 "Failed to add hwmon sysfs attributes\n");
+ 	}
+ 
+ 	return 0;
+@@ -959,6 +965,10 @@ static int sunxi_ths_register(struct ths_device *tmdev)
+ 							&ths_ops);
+ 		if (IS_ERR(tmdev->sensor[i].tzd))
+ 			return PTR_ERR(tmdev->sensor[i].tzd);
++
++		if (devm_thermal_add_hwmon_sysfs(tmdev->sensor[i].tzd))
++			dev_warn(tmdev->dev,
++				 "Failed to add hwmon sysfs attributes\n");
+ 	}
+ 
+ 	return 0;
