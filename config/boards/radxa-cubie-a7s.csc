@@ -11,3 +11,4 @@ BOOTFS_TYPE="fat"
 
 enable_extension "radxa-aic8800"
 AIC8800_TYPE="usb"
+enable_extension "radxa-bxm-img-gpu"
