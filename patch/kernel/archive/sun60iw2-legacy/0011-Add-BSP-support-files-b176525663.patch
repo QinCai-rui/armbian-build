@@ -1,7 +1,7 @@
-From 05c6e386a47a66a59befda45c43c52f7159f9aa5 Mon Sep 17 00:00:00 2001
+From 1f4f1afc66a1722667ee5b35701c42512382f6c7 Mon Sep 17 00:00:00 2001
 From: Armbian Builder <support@armbian.com>
-Date: Fri, 23 Jan 2026 03:17:41 +0000
-Subject: [PATCH] Add BSP support files bf1d47a3b4
+Date: Thu, 16 Apr 2026 11:35:32 +0000
+Subject: [PATCH] Add BSP support files b176525663
 
 ---
  Makefile                                      |    4 +
@@ -32120,5 +32120,5 @@ index 000000000000..179bc59a1c95
 +
 +#endif /* __DT_SUNXI_SPI_H */
 -- 
-2.43.0
+2.47.3
 

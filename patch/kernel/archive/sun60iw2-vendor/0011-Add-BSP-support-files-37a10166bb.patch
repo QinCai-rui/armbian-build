@@ -1,13 +1,13 @@
-From 1db1435b9e9b3f986050ee309fbad1c0a8e7771f Mon Sep 17 00:00:00 2001
+From 6d529fd6eea5e342901f822170017748382fc084 Mon Sep 17 00:00:00 2001
 From: Armbian Builder <support@armbian.com>
-Date: Fri, 23 Jan 2026 18:55:33 +0000
-Subject: [PATCH] Add BSP support files 70a279d673
+Date: Thu, 16 Apr 2026 02:33:52 +0000
+Subject: [PATCH] Add BSP support files 37a10166bb
 
 ---
  Makefile                                      |    4 +
  arch/arm64/boot/dts/allwinner/sun55iw3p1.dtsi | 5632 +++++++++++++++++
  .../boot/dts/allwinner/sun60iw2p1-cpu-vf.dtsi | 2176 +++++++
- arch/arm64/boot/dts/allwinner/sun60iw2p1.dtsi | 5068 +++++++++++++++
+ arch/arm64/boot/dts/allwinner/sun60iw2p1.dtsi | 5069 +++++++++++++++
  arch/arm64/boot/dts/allwinner/sun65iw1p1.dtsi |  328 +
  include/dt-bindings/clock/sun20iw5-aon-ccu.h  |   43 +
  include/dt-bindings/clock/sun20iw5-app-ccu.h  |  110 +
@@ -97,7 +97,7 @@ Subject: [PATCH] Add BSP support files 70a279d673
  include/dt-bindings/reset/sun8iw21-ccu.h      |   60 +
  include/dt-bindings/reset/sun8iw21-r-ccu.h    |   14 +
  include/dt-bindings/spi/sunxi-spi.h           |   18 +
- 93 files changed, 18454 insertions(+), 4 deletions(-)
+ 93 files changed, 18455 insertions(+), 4 deletions(-)
  create mode 100644 arch/arm64/boot/dts/allwinner/sun55iw3p1.dtsi
  create mode 100644 arch/arm64/boot/dts/allwinner/sun60iw2p1-cpu-vf.dtsi
  create mode 100644 arch/arm64/boot/dts/allwinner/sun60iw2p1.dtsi
@@ -8024,10 +8024,10 @@ index 000000000000..023105b45da1
 +};
 diff --git a/arch/arm64/boot/dts/allwinner/sun60iw2p1.dtsi b/arch/arm64/boot/dts/allwinner/sun60iw2p1.dtsi
 new file mode 100644
-index 000000000000..544a97b68685
+index 000000000000..b3e22d72348f
 --- /dev/null
 +++ b/arch/arm64/boot/dts/allwinner/sun60iw2p1.dtsi
-@@ -0,0 +1,5068 @@
+@@ -0,0 +1,5069 @@
 +// SPDX-License-Identifier: (GPL-2.0+ or MIT)
 +#include <dt-bindings/clock/sun60iw2-ccu.h>
 +#include <dt-bindings/clock/sun60iw2-rtc.h>
@@ -10633,15 +10633,18 @@ index 000000000000..544a97b68685
 +				reg = <0x0 0x05820000 0x0 0x1000>;
 +				interrupts = <GIC_SPI 125 IRQ_TYPE_LEVEL_HIGH>;
 +				device_id = <0>;
-+				status = "okay";
++				pinctrl-names = "default","sleep";
++				pinctrl-0 = <&ncsi0_8bit_pins_a>;
++				pinctrl-1 = <&ncsi0_8bit_pins_b>;
++				status = "disabled";
 +			};
 +			csi1: csi@5821000 {
 +				compatible = "allwinner,sunxi-csi";
 +				reg = <0x0 0x05821000 0x0 0x1000>;
 +				interrupts = <GIC_SPI 126 IRQ_TYPE_LEVEL_HIGH>;
 +				pinctrl-names = "default","sleep";
-+				pinctrl-0 = <&ncsi0_8bit_pins_a>;
-+				pinctrl-1 = <&ncsi0_8bit_pins_b>;
++				pinctrl-0 = <&ncsi1_8bit_pins_a>;
++				pinctrl-1 = <&ncsi1_8bit_pins_b>;
 +				device_id = <1>;
 +				status = "disabled";
 +			};
@@ -10650,8 +10653,6 @@ index 000000000000..544a97b68685
 +				reg = <0x0 0x05822000 0x0 0x1000>;
 +				interrupts = <GIC_SPI 127 IRQ_TYPE_LEVEL_HIGH>;
 +				pinctrl-names = "default","sleep";
-+				pinctrl-0 = <&ncsi1_8bit_pins_a>;
-+				pinctrl-1 = <&ncsi1_8bit_pins_b>;
 +				device_id = <2>;
 +				status = "disabled";
 +			};
@@ -19217,5 +19218,5 @@ index 000000000000..179bc59a1c95
 +
 +#endif /* __DT_SUNXI_SPI_H */
 -- 
-2.43.0
+2.47.3
 
