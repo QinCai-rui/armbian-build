@@ -11,8 +11,14 @@ function extension_finish_config__install_kernel_headers_for_aw-drivers-dkms_dkm
 
 function post_install_kernel_debs__install_aw-drivers-dkms_dkms_package() {
 	[[ "${INSTALL_HEADERS}" != "yes" ]] || [[ "${KERNEL_HAS_WORKING_HEADERS}" != "yes" ]] && return 0
-	api_url="https://api.github.com/repos/radxa-pkg/aw-drivers-dkms/releases/latest"
-	latest_version=$(curl -s "${api_url}" | jq -r '.tag_name')
+	
+	local latest_version=""
+	if [[ "${KERNEL_MAJOR_MINOR}" == "5.15" ]]; then
+		latest_version="0.1.0-2"
+	else
+		api_url="https://api.github.com/repos/radxa-pkg/aw-drivers-dkms/releases/latest"
+		latest_version=$(curl -s "${api_url}" | jq -r '.tag_name')
+	fi
 	aw_drivers_dkms_url="https://github.com/radxa-pkg/aw-drivers-dkms/releases/download/${latest_version}/img-bxm-dkms_${latest_version}_all.deb"
 	
 	local build_flags="-Wno-error=type-limits -Wno-error=incompatible-pointer-types -Wno-error=missing-field-initializers -Wno-error=unused-result -Wno-type-limits"
