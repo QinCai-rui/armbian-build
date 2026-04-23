@@ -1,12 +1,12 @@
-From 786ad1b13009ed92ed51f143563cdf0414b04fd3 Mon Sep 17 00:00:00 2001
+From 90a7981a0766f06aabd5ffed5df74ec8eeea6168 Mon Sep 17 00:00:00 2001
 From: Armbian Builder <support@armbian.com>
-Date: Mon, 23 Mar 2026 14:33:12 +0000
-Subject: [PATCH] Add BSP support files 6d77b582a4
+Date: Thu, 23 Apr 2026 04:24:24 +0000
+Subject: [PATCH] Add BSP support files a7e85c7030
 
 ---
  Makefile                                      |    4 +
  .../boot/dts/allwinner/sun60iw2p1-cpu-vf.dtsi | 2176 +++++++
- arch/arm64/boot/dts/allwinner/sun60iw2p1.dtsi | 5002 +++++++++++++++++
+ arch/arm64/boot/dts/allwinner/sun60iw2p1.dtsi | 5006 +++++++++++++++++
  include/dt-bindings/clock/sun20iw5-aon-ccu.h  |   43 +
  include/dt-bindings/clock/sun20iw5-app-ccu.h  |  110 +
  include/dt-bindings/clock/sun50i-a100-ccu.h   |    3 +-
@@ -95,7 +95,7 @@ Subject: [PATCH] Add BSP support files 6d77b582a4
  include/dt-bindings/reset/sun8iw21-ccu.h      |   60 +
  include/dt-bindings/reset/sun8iw21-r-ccu.h    |   14 +
  include/dt-bindings/spi/sunxi-spi.h           |   18 +
- 91 files changed, 12428 insertions(+), 4 deletions(-)
+ 91 files changed, 12432 insertions(+), 4 deletions(-)
  create mode 100644 arch/arm64/boot/dts/allwinner/sun60iw2p1-cpu-vf.dtsi
  create mode 100644 arch/arm64/boot/dts/allwinner/sun60iw2p1.dtsi
  create mode 100644 include/dt-bindings/clock/sun20iw5-aon-ccu.h
@@ -2382,10 +2382,10 @@ index 000000000000..023105b45da1
 +};
 diff --git a/arch/arm64/boot/dts/allwinner/sun60iw2p1.dtsi b/arch/arm64/boot/dts/allwinner/sun60iw2p1.dtsi
 new file mode 100644
-index 000000000000..c6bd161698d6
+index 000000000000..cc75d8dd6250
 --- /dev/null
 +++ b/arch/arm64/boot/dts/allwinner/sun60iw2p1.dtsi
-@@ -0,0 +1,5002 @@
+@@ -0,0 +1,5006 @@
 +// SPDX-License-Identifier: (GPL-2.0+ or MIT)
 +#include <dt-bindings/clock/sun60iw2-ccu.h>
 +#include <dt-bindings/clock/sun60iw2-rtc.h>
@@ -3832,10 +3832,10 @@ index 000000000000..c6bd161698d6
 +				power-domains = <&pck600 PD_PCIE>;
 +			};
 +
-+			gpu{
-+				id = <6>;
-+				power-domains = <&pck600 PD_GPU_TOP>;
-+			};
++			// gpu{
++			// 	id = <6>;
++			// 	power-domains = <&pck600 PD_GPU_TOP>;
++			// };
 +
 +			iommu0{
 +				id = <14>;
@@ -4610,35 +4610,39 @@ index 000000000000..c6bd161698d6
 +			status = "disabled";
 +		};
 +
-+		// npu: npu@3600000 {
-+		// 	compatible = "vivante,gc";
-+		// 	reg = <0x0 0x03600000 0x0 0x1000>;
-+		// 	interrupts = <GIC_SPI 65 IRQ_TYPE_LEVEL_HIGH>;
-+		// 	clocks = <&ccu CLK_MBUS_NPU_GATE>,
-+		// 		 <&ccu CLK_NPU>,
-+		// 		 <&ccu CLK_NPU_AHB_GATE>;
-+		// 	clock-names = "bus", "core", "reg";
-+		// 	resets = <&ccu RST_BUS_NPU_CORE>;
-+		// 	power-domains = <&pck600 PD_NPU>;
-+		// 	status = "disabled";
-+		// };
-+
 +		npu: npu@3600000 {
-+			compatible = "allwinner,npu";
++			compatible = "vivante,gc";
 +			reg = <0x0 0x03600000 0x0 0x1000>;
-+			device_type = "npu";
-+			dev_name = "npu";
 +			interrupts = <GIC_SPI 65 IRQ_TYPE_LEVEL_HIGH>;
-+			interrupt-names = "npu";
-+			clocks = <&ccu CLK_NPU>, <&ccu CLK_PLL_NPU>, <&ccu CLK_BUS_NPU>, <&ccu CLK_MBUS_NPU_GATE>, <&ccu CLK_NPU_AHB_GATE>;
-+			clock-names = "clk_npu", "clk_parent", "clk_bus", "clk_mbus_gate", "clk_ahb_gate";
-+			operating-points-v2 = <&npu_opp_table>;
-+			resets = <&ccu RST_BUS_NPU_CORE>, <&ccu RST_BUS_NPU_AXI>, <&ccu RST_BUS_NPU_AHB>;
-+			reset-names = "npu_rst", "npu_axi_rst", "npu_ahb_rst";
++			clocks = <&ccu CLK_BUS_NPU>,
++				<&ccu CLK_NPU>,
++				<&ccu CLK_MBUS_NPU_GATE>,
++				<&ccu CLK_NPU_AHB_GATE>;
++			clock-names = "bus", "core", "mbus", "reg";
++			resets = <&ccu RST_BUS_NPU_CORE>,
++				<&ccu RST_BUS_NPU_AXI>,
++				<&ccu RST_BUS_NPU_AHB>;
++			reset-names = "core", "axi", "ahb";
 +			power-domains = <&pck600 PD_NPU>;
-+			npu-vf = <1008>;
 +			status = "disabled";
 +		};
++
++		// npu: npu@3600000 {
++		// 	compatible = "allwinner,npu";
++		// 	reg = <0x0 0x03600000 0x0 0x1000>;
++		// 	device_type = "npu";
++		// 	dev_name = "npu";
++		// 	interrupts = <GIC_SPI 65 IRQ_TYPE_LEVEL_HIGH>;
++		// 	interrupt-names = "npu";
++		// 	clocks = <&ccu CLK_NPU>, <&ccu CLK_PLL_NPU>, <&ccu CLK_BUS_NPU>, <&ccu CLK_MBUS_NPU_GATE>, <&ccu CLK_NPU_AHB_GATE>;
++		// 	clock-names = "clk_npu", "clk_parent", "clk_bus", "clk_mbus_gate", "clk_ahb_gate";
++		// 	operating-points-v2 = <&npu_opp_table>;
++		// 	resets = <&ccu RST_BUS_NPU_CORE>, <&ccu RST_BUS_NPU_AXI>, <&ccu RST_BUS_NPU_AHB>;
++		// 	reset-names = "npu_rst", "npu_axi_rst", "npu_ahb_rst";
++		// 	power-domains = <&pck600 PD_NPU>;
++		// 	npu-vf = <1008>;
++		// 	status = "disabled";
++		// };
 +
 +		hwspinlock: hwspinlock@3005000 {
 +			compatible = "allwinner,sunxi-hwspinlock";
@@ -6907,9 +6911,9 @@ index 000000000000..c6bd161698d6
 +				 <&ccu CLK_PLL_GPU0>,
 +				 <&ccu CLK_BUS_GPU0>;
 +			clock-names = "core", "mem", "sys";
-+			power-domains = <&pck600 PD_GPU_CORE>;
-+			// 	<&pck600 PD_GPU_TOP>;
-+			// power-domain-names = "a", "b";
++			power-domains = <&pck600 PD_GPU_CORE>,
++				<&pck600 PD_GPU_TOP>;
++			power-domain-names = "a", "b";
 +			resets = <&ccu RST_BUS_GPU0>;
 +			operating-points-v2 = <&gpu_opp_table>;
 +			#cooling-cells = <2>;
