@@ -1,7 +1,7 @@
-From 941f91951496a6e974c3fe487458bace7eb38ec1 Mon Sep 17 00:00:00 2001
+From 700b6a1800d7c287571d87d2838f9cca7c9b7daa Mon Sep 17 00:00:00 2001
 From: Armbian Builder <support@armbian.com>
-Date: Fri, 24 Apr 2026 11:03:27 +0000
-Subject: [PATCH] Add Allwinner Device a733 0d91f82257
+Date: Fri, 1 May 2026 08:42:28 +0000
+Subject: [PATCH] Add Allwinner Device a733 b9b7d7aa04
 
 ---
  .../dts/allwinner/sun60i-a733-cubie-a7a.dts   | 2179 +++++++
