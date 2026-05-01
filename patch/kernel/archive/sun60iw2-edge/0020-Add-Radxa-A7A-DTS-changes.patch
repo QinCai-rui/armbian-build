@@ -4,8 +4,8 @@ Date: Thu, 30 Apr 2026 09:34:47 -0400
 Subject: [PATCH 1/2] Add Radxa A7A DTS changes
 
 ---
- .../dts/allwinner/sun60i-a733-cubie-a7a.dts   | 268 ++++--------------
- 1 file changed, 60 insertions(+), 208 deletions(-)
+ .../dts/allwinner/sun60i-a733-cubie-a7a.dts   | 272 ++++--------------
+ 1 file changed, 62 insertions(+), 210 deletions(-)
 
 diff --git a/arch/arm64/boot/dts/allwinner/sun60i-a733-cubie-a7a.dts b/arch/arm64/boot/dts/allwinner/sun60i-a733-cubie-a7a.dts
 index cc6dece5cd47..b31c1b252528 100644
@@ -372,6 +372,18 @@ index cc6dece5cd47..b31c1b252528 100644
  	};
  };
  /*Disable soc rtc*/
+diff --git a/arch/arm64/boot/dts/allwinner/sun60i-a733-cubie-a7a.dts b/arch/arm64/boot/dts/allwinner/sun60i-a733-cubie-a7a.dts
+index b31c1b252528..48f6bc7d27f1 100644
+--- a/arch/arm64/boot/dts/allwinner/sun60i-a733-cubie-a7a.dts
++++ b/arch/arm64/boot/dts/allwinner/sun60i-a733-cubie-a7a.dts
+@@ -779,7 +779,7 @@ &sdc2 {
+ 	/*vqmmc-supply = <&reg_aldo1>;*/
+ 	/*emmc io vol 1.8v*/
+ 	/*vqmmc-supply = <&reg_cldo1>;*/
+-	status = "okay";
++	status = "disabled";
+ };
+ 
+ &ufs {
 -- 
 2.51.0
-

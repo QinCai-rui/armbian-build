@@ -4,8 +4,8 @@ Date: Thu, 30 Apr 2026 09:35:45 -0400
 Subject: [PATCH 2/2] Add Radxa A7S DTS changes
 
 ---
- .../dts/allwinner/sun60i-a733-cubie-a7s.dts   | 266 ++++--------------
- 1 file changed, 59 insertions(+), 207 deletions(-)
+ .../dts/allwinner/sun60i-a733-cubie-a7s.dts   | 270 ++++--------------
+ 1 file changed, 61 insertions(+), 209 deletions(-)
 
 diff --git a/arch/arm64/boot/dts/allwinner/sun60i-a733-cubie-a7s.dts b/arch/arm64/boot/dts/allwinner/sun60i-a733-cubie-a7s.dts
 index 059f9a482c78..f82047073b9a 100644
@@ -362,7 +362,19 @@ index 059f9a482c78..f82047073b9a 100644
 -		};
  	};
  };
+ diff --git a/arch/arm64/boot/dts/allwinner/sun60i-a733-cubie-a7s.dts b/arch/arm64/boot/dts/allwinner/sun60i-a733-cubie-a7s.dts
+index f82047073b9a..b3cfe406d715 100644
+--- a/arch/arm64/boot/dts/allwinner/sun60i-a733-cubie-a7s.dts
++++ b/arch/arm64/boot/dts/allwinner/sun60i-a733-cubie-a7s.dts
+@@ -828,7 +828,7 @@ &sdc2 {
+ 	vdmmc33sw-supply = <&reg_dc1sw2>;
+ 	vqmmc18sw-supply = <&reg_cldo5>;
+ 	vdmmc18sw-supply = <&reg_cldo5>;
+-	status = "okay";
++	status = "disabled";
+ };
  
+ &sdc1 {
 -- 
 2.51.0
 
