@@ -1,14 +1,14 @@
-From ca178f6f5b699eef6fb2cce7dc5c5c21aaedbe1a Mon Sep 17 00:00:00 2001
+From 05a8a432ab5fee0e141191522a1621b842f70bea Mon Sep 17 00:00:00 2001
 From: Armbian Builder <support@armbian.com>
-Date: Fri, 23 Jan 2026 03:17:44 +0000
-Subject: [PATCH] Add Allwinner Device a733 63d2b7b04f
+Date: Tue, 28 Apr 2026 19:06:47 +0000
+Subject: [PATCH] Add Allwinner Device a733 6d911d1582
 
 ---
  .../dts/allwinner/sun60i-a733-cubie-a7a.dts   | 2412 +++++++++++++++++
  .../dts/allwinner/sun60i-a733-cubie-a7s.dts   | 1976 ++++++++++++++
  .../dts/allwinner/sun60i-a733-cubie-a7z.dts   | 1942 +++++++++++++
- arch/arm64/configs/bsp.config                 |  354 +++
- 4 files changed, 6684 insertions(+)
+ arch/arm64/configs/bsp.config                 |  362 +++
+ 4 files changed, 6692 insertions(+)
  create mode 100644 arch/arm64/boot/dts/allwinner/sun60i-a733-cubie-a7a.dts
  create mode 100755 arch/arm64/boot/dts/allwinner/sun60i-a733-cubie-a7s.dts
  create mode 100755 arch/arm64/boot/dts/allwinner/sun60i-a733-cubie-a7z.dts
@@ -16,7 +16,7 @@ Subject: [PATCH] Add Allwinner Device a733 63d2b7b04f
 
 diff --git a/arch/arm64/boot/dts/allwinner/sun60i-a733-cubie-a7a.dts b/arch/arm64/boot/dts/allwinner/sun60i-a733-cubie-a7a.dts
 new file mode 100644
-index 000000000000..0b8982dd41a7
+index 000000000000..089724e392b7
 --- /dev/null
 +++ b/arch/arm64/boot/dts/allwinner/sun60i-a733-cubie-a7a.dts
 @@ -0,0 +1,2412 @@
@@ -1260,7 +1260,7 @@ index 000000000000..0b8982dd41a7
 +			compatible = "x-powers,axp2101-pek";
 +			status = "okay";
 +			pmu_powkey_off_en = <1>;
-+			pmu_powkey_off_func = <1>;
++			pmu_powkey_off_func = <0>;
 +			pmu_powkey_off_time = <4000>;
 +			pmu_powkey_long_time = <1500>;
 +			pmu_powkey_on_time = <127>;
@@ -6364,10 +6364,10 @@ index 000000000000..9781e5ab9348
 +};
 diff --git a/arch/arm64/configs/bsp.config b/arch/arm64/configs/bsp.config
 new file mode 100644
-index 000000000000..d501bc237f56
+index 000000000000..35f1912af739
 --- /dev/null
 +++ b/arch/arm64/configs/bsp.config
-@@ -0,0 +1,354 @@
+@@ -0,0 +1,362 @@
 +CONFIG_AW_BSP=y
 +CONFIG_AW_KERNEL_ORIGIN=y
 +CONFIG_ARCH_SUN60I=y
@@ -6722,7 +6722,14 @@ index 000000000000..d501bc237f56
 +CONFIG_ATA=m
 +CONFIG_SATA_AHCI=m
 +CONFIG_SND_SOC_SUNXI_CODEC_AV=y
-\ No newline at end of file
++
++#
++# G2D
++#
++CONFIG_AW_G2D=y
++CONFIG_G2D_RCQ=y
++CONFIG_G2D_ROTATE=y
++CONFIG_G2D_MIXER=y
 -- 
-2.43.0
+2.47.3
 

@@ -1,16 +1,18 @@
-From e00781ad2f39a129862f4bf7052aa016db0edbd9 Mon Sep 17 00:00:00 2001
-From: Nick Alilovic <nickalilovic@gmail.com>
-Date: Tue, 3 Feb 2026 07:48:39 -0500
-Subject: [PATCH] Fix usb type c
+From 7b13683c725fba2357eb2bfa7e8edc8a74bbeaff Mon Sep 17 00:00:00 2001
+From: Stephen Chen <stephen@radxa.com>
+Date: Sat, 2 Aug 2025 20:55:35 +0800
+Subject: [PATCH] drivers: usb: Add et7304 driver
 
-Fix usb type c
+Link: https://aservice.allwinnertech.com/issues/84205
+
+Signed-off-by: Stephen Chen <stephen@radxa.com>
 ---
  bsp/drivers/usb/typec/Kconfig             |   2 +
  bsp/drivers/usb/typec/Makefile            |   1 +
- bsp/drivers/usb/typec/tcpm/Kconfig        |   7 +-
- bsp/drivers/usb/typec/tcpm/Makefile       |   3 +-
- bsp/drivers/usb/typec/tcpm/tcpci_et7304.c | 500 ++++++++++++++++++++++++++
- 5 files changed, 507 insertions(+), 6 deletions(-)
+ bsp/drivers/usb/typec/tcpm/Kconfig        	   |  11 +
+ bsp/drivers/usb/typec/tcpm/Makefile           |   1 +
+ bsp/drivers/usb/typec/tcpm/tcpci_et7304.c     | 500 ++++++++++++++++++++++++++
+ 3 files changed, 512 insertions(+)
  create mode 100644 bsp/drivers/usb/typec/tcpm/tcpci_et7304.c
 
 diff --git a/bsp/drivers/usb/typec/Kconfig b/bsp/drivers/usb/typec/Kconfig
@@ -35,41 +37,39 @@ index 444eae4..ffc3cf5 100644
 +obj-$(CONFIG_TYPEC_TCPM)	+= tcpm/
  obj-$(CONFIG_TYPEC)            += mux/
 diff --git a/bsp/drivers/usb/typec/tcpm/Kconfig b/bsp/drivers/usb/typec/tcpm/Kconfig
-index 9a15baf..baca3a5 100644
+index 9a15baf3..a2cc24fd 100644
 --- a/bsp/drivers/usb/typec/tcpm/Kconfig
 +++ b/bsp/drivers/usb/typec/tcpm/Kconfig
-@@ -4,13 +4,12 @@ if TYPEC_TCPM
+@@ -16,6 +16,17 @@ config TYPEC_HUSB311
  
- if TYPEC_TCPCI
+ 	  If unsure, say N.
  
--config TYPEC_HUSB311
--	tristate "Hynetek HUSB311 Type-C chip driver"
 +config TYPEC_ET7304
 +	tristate "Etek ET7304 Type-C chip driver"
- 	depends on USB_SUNXI_TYPEC
- 	depends on I2C
--	select AW_POWER_NOTIFIER
- 	help
--	  Hynetek HUSB311 Type-C chip driver that works with
++	depends on USB_SUNXI_TYPEC
++	depends on I2C
++	help
 +	  Etek ET7304 Type-C chip driver that works with
- 	  Type-C Port Controller Manager to provide USB PD and USB
- 	  Type-C functionalities.
++	  Type-C Port Controller Manager to provide USB PD and USB
++	  Type-C functionalities.
++
++	  If unsure, say N.
++
+ endif # TYPEC_TCPCI
  
+ endif # TYPEC_TCPM
 diff --git a/bsp/drivers/usb/typec/tcpm/Makefile b/bsp/drivers/usb/typec/tcpm/Makefile
-index 132a3f1..be10340 100644
+index 132a3f1e..0be66fc4 100644
 --- a/bsp/drivers/usb/typec/tcpm/Makefile
 +++ b/bsp/drivers/usb/typec/tcpm/Makefile
-@@ -1,6 +1,5 @@
- # SPDX-License-Identifier: GPL-2.0-only
- # tcpm
- ccflags-y += -I $(srctree)/drivers/usb/typec/tcpm
--ccflags-y += -I $(srctree)/bsp/drivers/power/include
+@@ -4,3 +4,4 @@ ccflags-y += -I $(srctree)/drivers/usb/typec/tcpm
+ ccflags-y += -I $(srctree)/bsp/drivers/power/include
  
--obj-$(CONFIG_TYPEC_HUSB311)		+= tcpci_husb311.o
+ obj-$(CONFIG_TYPEC_HUSB311)		+= tcpci_husb311.o
 +obj-$(CONFIG_TYPEC_ET7304)		+= tcpci_et7304.o
 diff --git a/bsp/drivers/usb/typec/tcpm/tcpci_et7304.c b/bsp/drivers/usb/typec/tcpm/tcpci_et7304.c
 new file mode 100644
-index 0000000..08dd922
+index 00000000..08dd9220
 --- /dev/null
 +++ b/bsp/drivers/usb/typec/tcpm/tcpci_et7304.c
 @@ -0,0 +1,500 @@
@@ -573,6 +573,3 @@ index 0000000..08dd922
 +MODULE_AUTHOR("jianghao@allwinnertech.com");
 +MODULE_DESCRIPTION("ET7304 USB Type-C Port Controller Interface Driver");
 +MODULE_LICENSE("GPL");
--- 
-2.43.0
-

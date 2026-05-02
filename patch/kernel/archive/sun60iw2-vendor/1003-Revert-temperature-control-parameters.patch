@@ -1,0 +1,170 @@
+From c5ee6a0e455fd2e4da08047579668a91dc63312b Mon Sep 17 00:00:00 2001
+From: Nick Alilovic <nickalilovic@gmail.com>
+Date: Fri, 1 May 2026 19:24:51 -0400
+Subject: [PATCH] Revert temperature control parameters
+
+Revert temperature control parameters
+---
+ .../dts/allwinner/sun60i-a733-cubie-a7a.dts   | 40 +++++++------------
+ .../dts/allwinner/sun60i-a733-cubie-a7s.dts   | 20 ++++++++--
+ .../dts/allwinner/sun60i-a733-cubie-a7z.dts   | 22 ++--------
+ 3 files changed, 35 insertions(+), 47 deletions(-)
+
+diff --git a/arch/arm64/boot/dts/allwinner/sun60i-a733-cubie-a7a.dts b/arch/arm64/boot/dts/allwinner/sun60i-a733-cubie-a7a.dts
+index 88d8a8ed3e7d..0276db846b2a 100644
+--- a/arch/arm64/boot/dts/allwinner/sun60i-a733-cubie-a7a.dts
++++ b/arch/arm64/boot/dts/allwinner/sun60i-a733-cubie-a7a.dts
+@@ -798,45 +798,33 @@ &mipi0 {
+ 	status = "disabled";
+ };
+ 
+-&cpul_target {
+-	temperature = <60000>;
+-	hysteresis = <2000>;
+-};
+-
+-&cpul_threshold{
+-	type = "active";
+-	temperature = <60000>;
+-	hysteresis = <2000>;
+-};
+-
+ &cpul_thermal_zone {
+-	sustainable-power = <3000>;
+ 	cooling-maps {
++		map0 {
++			trip = <&cpul_target>;
++			cooling-device = <&cpu0 THERMAL_NO_LIMIT THERMAL_NO_LIMIT>;
++			contribution = <1024>;
++		};
++
+ 		map1 {
+ 			trip = <&cpul_threshold>;
+-			cooling-device = <&fan0 THERMAL_NO_LIMIT THERMAL_NO_LIMIT>;
++			cooling-device = <&fan0 2 THERMAL_NO_LIMIT>;
+ 			contribution = <1024>;
+ 		};
+ 	};
+ };
+ 
+-&cpub_target {
+-	temperature = <60000>;
+-	hysteresis = <2000>;
+-};
+-
+-&cpub_threshold{
+-	type = "active";
+-	temperature = <60000>;
+-	hysteresis = <2000>;
+-};
+-
+ &cpub_thermal_zone {
+-	sustainable-power = <4000>;
+ 	cooling-maps {
++		map0 {
++			trip = <&cpub_target>;
++			cooling-device = <&cpu6 THERMAL_NO_LIMIT THERMAL_NO_LIMIT>;
++			contribution = <1024>;
++		};
++
+ 		map1 {
+ 			trip = <&cpub_threshold>;
+-			cooling-device = <&fan0 THERMAL_NO_LIMIT THERMAL_NO_LIMIT>;
++			cooling-device = <&fan0 2 THERMAL_NO_LIMIT>;
+ 			contribution = <1024>;
+ 		};
+ 	};
+diff --git a/arch/arm64/boot/dts/allwinner/sun60i-a733-cubie-a7s.dts b/arch/arm64/boot/dts/allwinner/sun60i-a733-cubie-a7s.dts
+index f7c1a88929d4..c6f7b4560f02 100755
+--- a/arch/arm64/boot/dts/allwinner/sun60i-a733-cubie-a7s.dts
++++ b/arch/arm64/boot/dts/allwinner/sun60i-a733-cubie-a7s.dts
+@@ -841,6 +841,10 @@ &s_pwm0_7 {
+ 	status = "okay";
+ };
+ 
++&soc{
++
++};
++
+ &cpul_target {
+ 	temperature = <60000>;
+ 	hysteresis = <2000>;
+@@ -853,8 +857,13 @@ &cpul_threshold{
+ };
+ 
+ &cpul_thermal_zone {
+-	sustainable-power = <3000>;
+ 	cooling-maps {
++		map0 {
++			trip = <&cpul_target>;
++			cooling-device = <&cpu0 THERMAL_NO_LIMIT THERMAL_NO_LIMIT>;
++			contribution = <1024>;
++		};
++
+ 		map1 {
+ 			trip = <&cpul_threshold>;
+ 			cooling-device = <&fan0 THERMAL_NO_LIMIT THERMAL_NO_LIMIT>;
+@@ -875,11 +884,16 @@ &cpub_threshold{
+ };
+ 
+ &cpub_thermal_zone {
+-	sustainable-power = <4000>;
+ 	cooling-maps {
++		map0 {
++			trip = <&cpub_target>;
++			cooling-device = <&cpu6 THERMAL_NO_LIMIT THERMAL_NO_LIMIT>;
++			contribution = <1024>;
++		};
++
+ 		map1 {
+ 			trip = <&cpub_threshold>;
+-			cooling-device = <&fan0 THERMAL_NO_LIMIT THERMAL_NO_LIMIT>;
++			cooling-device = <&fan0 2 THERMAL_NO_LIMIT>;
+ 			contribution = <1024>;
+ 		};
+ 	};
+diff --git a/arch/arm64/boot/dts/allwinner/sun60i-a733-cubie-a7z.dts b/arch/arm64/boot/dts/allwinner/sun60i-a733-cubie-a7z.dts
+index df117c21696b..235b5dd23535 100644
+--- a/arch/arm64/boot/dts/allwinner/sun60i-a733-cubie-a7z.dts
++++ b/arch/arm64/boot/dts/allwinner/sun60i-a733-cubie-a7z.dts
+@@ -860,17 +860,6 @@ map0 {
+ 	};
+ };
+ 
+-&cpul_target {
+-	temperature = <60000>;
+-	hysteresis = <2000>;
+-};
+-
+-&cpul_threshold{
+-	type = "active";
+-	temperature = <60000>;
+-	hysteresis = <2000>;
+-};
+-
+ &cpul_thermal_zone {
+ 	sustainable-power = <3000>;
+ 	cooling-maps {
+@@ -882,15 +871,12 @@ map1 {
+ 	};
+ };
+ 
+-&cpub_target {
+-	temperature = <60000>;
+-	hysteresis = <2000>;
++&cpub_thres {
++	temperature = <70000>;
+ };
+ 
+-&cpub_threshold{
+-	type = "active";
+-	temperature = <60000>;
+-	hysteresis = <2000>;
++&cpub_overshot {
++	temperature = <90000>;
+ };
+ 
+ &cpub_thermal_zone {
+-- 
+2.51.0
+
