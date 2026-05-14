@@ -8,7 +8,7 @@ Signed-off-by: ZHANG Yuntian <yt@radxa.com>
  src/arch/arm64/boot/dts/allwinner/Makefile | 3 ++
  1 file changed, 3 insertion(+)
 
-diff --git a/arch/arm64/boot/dts/allwinner/Makefile b/arch/arm64/boot/dts/allwinner/Makefile
+diff --git a/arch/arm64/boot/dts/allwinner/Makefile b/src/arch/arm64/boot/dts/allwinner/Makefile
 index a96d9d2d8dd8..aa55bb91cda6 100644
 --- a/arch/arm64/boot/dts/allwinner/Makefile
 +++ b/arch/arm64/boot/dts/allwinner/Makefile

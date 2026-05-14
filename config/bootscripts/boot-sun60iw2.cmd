@@ -2,30 +2,33 @@
 #
 # Please edit /boot/armbianEnv.txt to set supported parameters
 #
+# Recompile with:
+# mkimage -C none -A arm64 -T script -d /boot/boot.cmd /boot/boot.scr
 
 # default values
-setenv kernel_addr_r "0x40080000"    # Standard ARM64 start (DRAM base + 512KB)
-setenv fdt_addr_r    "0x50000000"    # Safe zone: Above U-Boot/ATF
-setenv ramdisk_addr_r "0x51000000"   # Safe zone: 16MB after FDT
-setenv load_addr      "0x50100000"   # Staging area for scripts & overlays
-setenv overlay_error "false"
-setenv rootdev "/dev/mmcblk0p1"
-setenv verbosity "1"
-setenv rootfstype "ext4"
-setenv console "both"
+setenv kernel_addr_r  "0x40200000"  # Align with BL31 handoff address
+setenv load_addr      "0x44000000"  # Staging/overlays, clear of all regions
+setenv fdt_addr_r     "0x43000000"  # FDT in clean window
+setenv ramdisk_addr_r "0x45000000"  # Ramdisk
+setenv ramdisk_file   "uInitrd"     # Default ramdisk filename
+setenv overlay_error  "false"
+setenv rootdev        "/dev/mmcblk0p2"
+setenv verbosity      "1"
+setenv rootfstype     "ext4"
+setenv console        "both"
 setenv docker_optimizations "on"
-setenv bootlogo "false"
+setenv bootlogo       "false"
 
 setenv vendor "allwinner"
 
-# Remember the default fdtfile provided by u-boot and delete the vendor name
-if setexpr subfdt sub ${vendor}/ "" ${fdtfile};then
+# Remember the default fdtfile provided by u-boot and strip vendor prefix
+if setexpr subfdt sub ${vendor}/ "" ${fdtfile}; then
 	setenv deffdt_file ${subfdt}
 fi
 
 # Remember the default u-boot fdtdir
 setenv deffdt_dir "${prefix}dtb"
-if test "$fdtdir" = ""; then setenv fdtdir "${deffdt_dir}/${vendor}";fi
+if test "$fdtdir" = ""; then setenv fdtdir "${deffdt_dir}/${vendor}"; fi
 
 # Print boot source
 itest.b *0x10028 == 0x00 && echo "U-boot loaded from SD"
@@ -34,20 +37,18 @@ itest.b *0x10028 == 0x03 && echo "U-boot loaded from SPI"
 
 echo "Boot script loaded from ${devtype}"
 
+# Load armbianEnv.txt if present - this can override any of the above defaults
 if test -e ${devtype} ${devnum} ${prefix}armbianEnv.txt; then
 	load ${devtype} ${devnum} ${load_addr} ${prefix}armbianEnv.txt
 	env import -t ${load_addr} ${filesize}
 fi
 
-# Delete the vendor's name from the fdtfile variable and record the result
-# after the file with the environment variables has been read
-if setexpr subfdt sub ${vendor}/ "" ${fdtfile};then
+# Strip vendor prefix from fdtfile after env import (env may have set fdtfile)
+if setexpr subfdt sub ${vendor}/ "" ${fdtfile}; then
 	setenv fdtfile ${subfdt}
 fi
 
-# In this shell, we can only check the existence of the file.
-# Make a check of reasonable ways to find the dtb file.
-# Set the true value of the paths.
+# Locate the DTB file - try multiple paths in order of preference
 if test -e ${devtype} ${devnum} "${fdtdir}/${fdtfile}"; then
 	echo "Load fdt: ${fdtdir}/${fdtfile}"
 else
@@ -70,37 +71,50 @@ else
 	fi
 fi
 
-if test "${console}" = "display" || test "${console}" = "both"; then setenv consoleargs "console=ttyAS0,115200 console=tty1"; fi
-if test "${console}" = "serial"; then setenv consoleargs "console=ttyAS0,115200"; fi
-if test "${bootlogo}" = "true"; then
-	setenv consoleargs "splash plymouth.ignore-serial-consoles ${consoleargs}"
-else
-	setenv consoleargs "splash=verbose ${consoleargs}"
+# Build console arguments
+if test "${console}" = "display" || test "${console}" = "both"; then
+	setenv consoleargs "console=ttyAS0,115200 console=tty1"
+fi
+if test "${console}" = "serial"; then
+	setenv consoleargs "console=ttyAS0,115200"
 fi
 
-# get PARTUUID of first partition on SD/eMMC it was loaded from
-# mmc 0 is always mapped to device u-boot (2016.09+) was loaded from
+# Build bootlogo/splash arguments separately from consoleargs
+if test "${bootlogo}" = "true"; then
+	setenv splashargs "splash plymouth.ignore-serial-consoles"
+else
+	setenv splashargs ""
+fi
+
+# Get PARTUUID of first partition on the boot device
 if test "${devtype}" = "mmc"; then part uuid mmc 0:1 partuuid; fi
 
-setenv bootargs "root=${rootdev} rootwait rootfstype=${rootfstype} ${consoleargs} consoleblank=0 loglevel=${verbosity} ubootpart=${partuuid} usb-storage.quirks=${usbstoragequirks} ${extraargs} ${extraboardargs}"
+# Assemble final bootargs
+setenv bootargs "root=${rootdev} rootwait rootfstype=${rootfstype} ${splashargs} ${consoleargs} consoleblank=0 loglevel=${verbosity} ubootpart=${partuuid} usb-storage.quirks=${usbstoragequirks} ${extraargs} ${extraboardargs}"
 
-if test "${docker_optimizations}" = "on"; then setenv bootargs "${bootargs} cgroup_enable=memory"; fi
+if test "${docker_optimizations}" = "on"; then
+	setenv bootargs "${bootargs} cgroup_enable=cpuset cgroup_memory=1 swapaccount=1 cgroup_enable=memory"
+fi
 
+# Load DTB and apply overlays
 load ${devtype} ${devnum} ${fdt_addr_r} ${fdtdir}/${fdtfile}
 fdt addr ${fdt_addr_r}
 fdt resize 65536
+
 for overlay_file in ${overlays}; do
 	if load ${devtype} ${devnum} ${load_addr} ${fdtdir}/overlay/${overlay_prefix}-${overlay_file}.dtbo; then
 		echo "Applying kernel provided DT overlay ${overlay_prefix}-${overlay_file}.dtbo"
 		fdt apply ${load_addr} || setenv overlay_error "true"
 	fi
 done
+
 for overlay_file in ${user_overlays}; do
 	if load ${devtype} ${devnum} ${load_addr} ${prefix}overlay-user/${overlay_file}.dtbo; then
 		echo "Applying user provided DT overlay ${overlay_file}.dtbo"
 		fdt apply ${load_addr} || setenv overlay_error "true"
 	fi
 done
+
 if test "${overlay_error}" = "true"; then
 	echo "Error applying DT overlays, restoring original DT"
 	load ${devtype} ${devnum} ${fdt_addr_r} ${fdtdir}/${fdtfile}
@@ -116,11 +130,13 @@ else
 	fi
 fi
 
+# Load kernel
 load ${devtype} ${devnum} ${kernel_addr_r} ${prefix}Image
-load ${devtype} ${devnum}:${distro_bootpart} ${ramdisk_addr_r} ${prefix}${ramdisk_file}
 
-booti ${kernel_addr_r} ${ramdisk_addr_r}:${filesize} ${fdt_addr_r}
-
-
-# Recompile with:
-# mkimage -C none -A arm -T script -d /boot/boot.cmd /boot/boot.scr
+# Load ramdisk and boot - fall back gracefully if ramdisk is missing
+if load ${devtype} ${devnum} ${ramdisk_addr_r} ${prefix}${ramdisk_file}; then
+	booti ${kernel_addr_r} ${ramdisk_addr_r}:${filesize} ${fdt_addr_r}
+else
+	echo "No ramdisk found at ${prefix}${ramdisk_file}, booting without"
+	booti ${kernel_addr_r} - ${fdt_addr_r}
+fi
