@@ -1,7 +1,7 @@
-From a053bb7eee42b4a00eecf4e75f39f4464947e464 Mon Sep 17 00:00:00 2001
+From 8fa765c7e8da0fa0701845fe07c28f82ee3010a5 Mon Sep 17 00:00:00 2001
 From: Armbian Builder <support@armbian.com>
-Date: Tue, 28 Apr 2026 18:29:37 +0000
-Subject: [PATCH] Add BSP support files 37a10166bb
+Date: Tue, 30 Jun 2026 05:05:35 +0000
+Subject: [PATCH] Add BSP support files d341bbae9d
 
 ---
  Makefile                                      |    4 +
@@ -188,7 +188,7 @@ Subject: [PATCH] Add BSP support files 37a10166bb
  create mode 100644 include/dt-bindings/spi/sunxi-spi.h
 
 diff --git a/Makefile b/Makefile
-index 37ae222eccf9..99bfda085df1 100644
+index 37ae222ecc..99bfda085d 100644
 --- a/Makefile
 +++ b/Makefile
 @@ -10,6 +10,10 @@ NAME = Pinguïn Aangedreven
@@ -204,7 +204,7 @@ index 37ae222eccf9..99bfda085df1 100644
  $(error GNU Make >= 3.82 is required. Your Make version is $(MAKE_VERSION))
 diff --git a/arch/arm64/boot/dts/allwinner/sun55iw3p1.dtsi b/arch/arm64/boot/dts/allwinner/sun55iw3p1.dtsi
 new file mode 100644
-index 000000000000..7ac6412cc26b
+index 0000000000..7ac6412cc2
 --- /dev/null
 +++ b/arch/arm64/boot/dts/allwinner/sun55iw3p1.dtsi
 @@ -0,0 +1,5632 @@
@@ -5842,7 +5842,7 @@ index 000000000000..7ac6412cc26b
 +
 diff --git a/arch/arm64/boot/dts/allwinner/sun60iw2p1-cpu-vf.dtsi b/arch/arm64/boot/dts/allwinner/sun60iw2p1-cpu-vf.dtsi
 new file mode 100644
-index 000000000000..023105b45da1
+index 0000000000..023105b45d
 --- /dev/null
 +++ b/arch/arm64/boot/dts/allwinner/sun60iw2p1-cpu-vf.dtsi
 @@ -0,0 +1,2176 @@
@@ -8024,7 +8024,7 @@ index 000000000000..023105b45da1
 +};
 diff --git a/arch/arm64/boot/dts/allwinner/sun60iw2p1.dtsi b/arch/arm64/boot/dts/allwinner/sun60iw2p1.dtsi
 new file mode 100644
-index 000000000000..b3e22d72348f
+index 0000000000..b3e22d7234
 --- /dev/null
 +++ b/arch/arm64/boot/dts/allwinner/sun60iw2p1.dtsi
 @@ -0,0 +1,5069 @@
@@ -13099,7 +13099,7 @@ index 000000000000..b3e22d72348f
 +};
 diff --git a/arch/arm64/boot/dts/allwinner/sun65iw1p1.dtsi b/arch/arm64/boot/dts/allwinner/sun65iw1p1.dtsi
 new file mode 100644
-index 000000000000..23bddd3a1afd
+index 0000000000..23bddd3a1a
 --- /dev/null
 +++ b/arch/arm64/boot/dts/allwinner/sun65iw1p1.dtsi
 @@ -0,0 +1,328 @@
@@ -13433,7 +13433,7 @@ index 000000000000..23bddd3a1afd
 +};
 diff --git a/include/dt-bindings/clock/sun20iw5-aon-ccu.h b/include/dt-bindings/clock/sun20iw5-aon-ccu.h
 new file mode 100644
-index 000000000000..d05d79a63354
+index 0000000000..d05d79a633
 --- /dev/null
 +++ b/include/dt-bindings/clock/sun20iw5-aon-ccu.h
 @@ -0,0 +1,43 @@
@@ -13482,7 +13482,7 @@ index 000000000000..d05d79a63354
 +#endif /* _DT_BINDINGS_CLK_SUN20IW5_AON_H_ */
 diff --git a/include/dt-bindings/clock/sun20iw5-app-ccu.h b/include/dt-bindings/clock/sun20iw5-app-ccu.h
 new file mode 100644
-index 000000000000..040d5e1a4dd9
+index 0000000000..040d5e1a4d
 --- /dev/null
 +++ b/include/dt-bindings/clock/sun20iw5-app-ccu.h
 @@ -0,0 +1,110 @@
@@ -13597,7 +13597,7 @@ index 000000000000..040d5e1a4dd9
 +
 +#endif /* _DT_BINDINGS_CLK_SUN20IW5_APP_H_ */
 diff --git a/include/dt-bindings/clock/sun50i-a100-ccu.h b/include/dt-bindings/clock/sun50i-a100-ccu.h
-index 06a2031d466b..c4b590aa5cda 100644
+index 06a2031d46..c4b590aa5c 100644
 --- a/include/dt-bindings/clock/sun50i-a100-ccu.h
 +++ b/include/dt-bindings/clock/sun50i-a100-ccu.h
 @@ -1,4 +1,5 @@
@@ -13608,7 +13608,7 @@ index 06a2031d466b..c4b590aa5cda 100644
   * Copyright (c) 2020 Yangtao Li <frank@allwinnertech.com>
   */
 diff --git a/include/dt-bindings/clock/sun50i-a100-r-ccu.h b/include/dt-bindings/clock/sun50i-a100-r-ccu.h
-index 07312e7264fb..6a812913daae 100644
+index 07312e7264..6a812913da 100644
 --- a/include/dt-bindings/clock/sun50i-a100-r-ccu.h
 +++ b/include/dt-bindings/clock/sun50i-a100-r-ccu.h
 @@ -1,4 +1,5 @@
@@ -13620,7 +13620,7 @@ index 07312e7264fb..6a812913daae 100644
   */
 diff --git a/include/dt-bindings/clock/sun50iw10-ccu.h b/include/dt-bindings/clock/sun50iw10-ccu.h
 new file mode 100644
-index 000000000000..b932bd044d00
+index 0000000000..b932bd044d
 --- /dev/null
 +++ b/include/dt-bindings/clock/sun50iw10-ccu.h
 @@ -0,0 +1,159 @@
@@ -13785,7 +13785,7 @@ index 000000000000..b932bd044d00
 +#endif /* _DT_BINDINGS_CLK_SUN50IW10_H_ */
 diff --git a/include/dt-bindings/clock/sun50iw10-r-ccu.h b/include/dt-bindings/clock/sun50iw10-r-ccu.h
 new file mode 100644
-index 000000000000..2647e0f1f01c
+index 0000000000..2647e0f1f0
 --- /dev/null
 +++ b/include/dt-bindings/clock/sun50iw10-r-ccu.h
 @@ -0,0 +1,26 @@
@@ -13817,7 +13817,7 @@ index 000000000000..2647e0f1f01c
 +#endif /* _DT_BINDINGS_CLK_SUN50IW10_R_CCU_H_ */
 diff --git a/include/dt-bindings/clock/sun50iw10-rtc.h b/include/dt-bindings/clock/sun50iw10-rtc.h
 new file mode 100644
-index 000000000000..012a69941844
+index 0000000000..012a699418
 --- /dev/null
 +++ b/include/dt-bindings/clock/sun50iw10-rtc.h
 @@ -0,0 +1,16 @@
@@ -13839,7 +13839,7 @@ index 000000000000..012a69941844
 +#endif /* _DT_BINDINGS_CLK_SUN50IW10_RTC_H_ */
 diff --git a/include/dt-bindings/clock/sun50iw12-ccu.h b/include/dt-bindings/clock/sun50iw12-ccu.h
 new file mode 100644
-index 000000000000..722852ce5ad7
+index 0000000000..722852ce5a
 --- /dev/null
 +++ b/include/dt-bindings/clock/sun50iw12-ccu.h
 @@ -0,0 +1,146 @@
@@ -13991,7 +13991,7 @@ index 000000000000..722852ce5ad7
 +#endif /* _DT_BINDINGS_CLK_SUN50IW12_H_ */
 diff --git a/include/dt-bindings/clock/sun50iw12-r-ccu.h b/include/dt-bindings/clock/sun50iw12-r-ccu.h
 new file mode 100644
-index 000000000000..01252add89d6
+index 0000000000..01252add89
 --- /dev/null
 +++ b/include/dt-bindings/clock/sun50iw12-r-ccu.h
 @@ -0,0 +1,33 @@
@@ -14030,7 +14030,7 @@ index 000000000000..01252add89d6
 +#endif /* _DT_BINDINGS_CLK_SUN50IW12_R_CCU_H_ */
 diff --git a/include/dt-bindings/clock/sun50iw12-rtc.h b/include/dt-bindings/clock/sun50iw12-rtc.h
 new file mode 100644
-index 000000000000..91ddad86f024
+index 0000000000..91ddad86f0
 --- /dev/null
 +++ b/include/dt-bindings/clock/sun50iw12-rtc.h
 @@ -0,0 +1,16 @@
@@ -14052,7 +14052,7 @@ index 000000000000..91ddad86f024
 +#endif /* _DT_BINDINGS_CLK_SUN50IW10_RTC_H_ */
 diff --git a/include/dt-bindings/clock/sun50iw9-ccu-rtc.h b/include/dt-bindings/clock/sun50iw9-ccu-rtc.h
 new file mode 100644
-index 000000000000..70fe5eaa918c
+index 0000000000..70fe5eaa91
 --- /dev/null
 +++ b/include/dt-bindings/clock/sun50iw9-ccu-rtc.h
 @@ -0,0 +1,16 @@
@@ -14074,7 +14074,7 @@ index 000000000000..70fe5eaa918c
 +#endif /* _DT_BINDINGS_CLK_SUN50IW9_RTC_H_ */
 diff --git a/include/dt-bindings/clock/sun50iw9-ccu.h b/include/dt-bindings/clock/sun50iw9-ccu.h
 new file mode 100644
-index 000000000000..144093593838
+index 0000000000..1440935938
 --- /dev/null
 +++ b/include/dt-bindings/clock/sun50iw9-ccu.h
 @@ -0,0 +1,151 @@
@@ -14231,7 +14231,7 @@ index 000000000000..144093593838
 +#endif /* _DT_BINDINGS_CLK_SUN50IW9_H_ */
 diff --git a/include/dt-bindings/clock/sun50iw9-r-ccu.h b/include/dt-bindings/clock/sun50iw9-r-ccu.h
 new file mode 100644
-index 000000000000..20a3bf620335
+index 0000000000..20a3bf6203
 --- /dev/null
 +++ b/include/dt-bindings/clock/sun50iw9-r-ccu.h
 @@ -0,0 +1,20 @@
@@ -14257,7 +14257,7 @@ index 000000000000..20a3bf620335
 +#endif /* _DT_BINDINGS_CLK_SUN50IW9_R_CCU_H_ */
 diff --git a/include/dt-bindings/clock/sun55iw3-ccu.h b/include/dt-bindings/clock/sun55iw3-ccu.h
 new file mode 100644
-index 000000000000..f4ef44eae8e8
+index 0000000000..f4ef44eae8
 --- /dev/null
 +++ b/include/dt-bindings/clock/sun55iw3-ccu.h
 @@ -0,0 +1,207 @@
@@ -14470,7 +14470,7 @@ index 000000000000..f4ef44eae8e8
 +#endif /* _DT_BINDINGS_CLK_SUN55IW3_H_ */
 diff --git a/include/dt-bindings/clock/sun55iw3-displl-ccu.h b/include/dt-bindings/clock/sun55iw3-displl-ccu.h
 new file mode 100644
-index 000000000000..6cfc6da4005e
+index 0000000000..6cfc6da400
 --- /dev/null
 +++ b/include/dt-bindings/clock/sun55iw3-displl-ccu.h
 @@ -0,0 +1,19 @@
@@ -14495,7 +14495,7 @@ index 000000000000..6cfc6da4005e
 +#endif /* _DT_BINDINGS_CLK_SUN55IW3_H_ */
 diff --git a/include/dt-bindings/clock/sun55iw3-mcu-ccu.h b/include/dt-bindings/clock/sun55iw3-mcu-ccu.h
 new file mode 100644
-index 000000000000..130ec207d24b
+index 0000000000..130ec207d2
 --- /dev/null
 +++ b/include/dt-bindings/clock/sun55iw3-mcu-ccu.h
 @@ -0,0 +1,58 @@
@@ -14559,7 +14559,7 @@ index 000000000000..130ec207d24b
 +#endif /* _DT_BINDINGS_CLK_SUN55IW3_MCU_CCU_H_ */
 diff --git a/include/dt-bindings/clock/sun55iw3-r-ccu.h b/include/dt-bindings/clock/sun55iw3-r-ccu.h
 new file mode 100644
-index 000000000000..e6949fcab52c
+index 0000000000..e6949fcab5
 --- /dev/null
 +++ b/include/dt-bindings/clock/sun55iw3-r-ccu.h
 @@ -0,0 +1,40 @@
@@ -14605,7 +14605,7 @@ index 000000000000..e6949fcab52c
 +#endif /* _DT_BINDINGS_CLK_SUN55IW3_R_CCU_H_ */
 diff --git a/include/dt-bindings/clock/sun55iw3-rtc.h b/include/dt-bindings/clock/sun55iw3-rtc.h
 new file mode 100644
-index 000000000000..ca77ca7e5ec6
+index 0000000000..ca77ca7e5e
 --- /dev/null
 +++ b/include/dt-bindings/clock/sun55iw3-rtc.h
 @@ -0,0 +1,24 @@
@@ -14635,7 +14635,7 @@ index 000000000000..ca77ca7e5ec6
 +#endif /* _DT_BINDINGS_CLK_SUN55IW3_RTC_H_ */
 diff --git a/include/dt-bindings/clock/sun55iw5-ccu.h b/include/dt-bindings/clock/sun55iw5-ccu.h
 new file mode 100644
-index 000000000000..4b3345fc9e91
+index 0000000000..4b3345fc9e
 --- /dev/null
 +++ b/include/dt-bindings/clock/sun55iw5-ccu.h
 @@ -0,0 +1,151 @@
@@ -14792,7 +14792,7 @@ index 000000000000..4b3345fc9e91
 +#endif /* _DT_BINDINGS_CLK_SUN55IW5_H_ */
 diff --git a/include/dt-bindings/clock/sun55iw5-r-ccu.h b/include/dt-bindings/clock/sun55iw5-r-ccu.h
 new file mode 100644
-index 000000000000..e8cb01ecc264
+index 0000000000..e8cb01ecc2
 --- /dev/null
 +++ b/include/dt-bindings/clock/sun55iw5-r-ccu.h
 @@ -0,0 +1,40 @@
@@ -14838,7 +14838,7 @@ index 000000000000..e8cb01ecc264
 +#endif /* _DT_BINDINGS_CLK_SUN55IW5_R_CCU_H_ */
 diff --git a/include/dt-bindings/clock/sun55iw5-rtc.h b/include/dt-bindings/clock/sun55iw5-rtc.h
 new file mode 100644
-index 000000000000..b3bd851234d4
+index 0000000000..b3bd851234
 --- /dev/null
 +++ b/include/dt-bindings/clock/sun55iw5-rtc.h
 @@ -0,0 +1,24 @@
@@ -14868,7 +14868,7 @@ index 000000000000..b3bd851234d4
 +#endif /* _DT_BINDINGS_CLK_SUN55IW5_RTC_H_ */
 diff --git a/include/dt-bindings/clock/sun55iw6-ccu.h b/include/dt-bindings/clock/sun55iw6-ccu.h
 new file mode 100644
-index 000000000000..38af72db55f9
+index 0000000000..38af72db55
 --- /dev/null
 +++ b/include/dt-bindings/clock/sun55iw6-ccu.h
 @@ -0,0 +1,227 @@
@@ -15101,7 +15101,7 @@ index 000000000000..38af72db55f9
 +#endif /* _DT_BINDINGS_CLK_SUN55IW6_H_ */
 diff --git a/include/dt-bindings/clock/sun55iw6-r-ccu.h b/include/dt-bindings/clock/sun55iw6-r-ccu.h
 new file mode 100644
-index 000000000000..c165d9d6aa0c
+index 0000000000..c165d9d6aa
 --- /dev/null
 +++ b/include/dt-bindings/clock/sun55iw6-r-ccu.h
 @@ -0,0 +1,41 @@
@@ -15148,7 +15148,7 @@ index 000000000000..c165d9d6aa0c
 +#endif /* _DT_BINDINGS_CLK_SUN55IW6_R_CCU_H_ */
 diff --git a/include/dt-bindings/clock/sun55iw6-rtc.h b/include/dt-bindings/clock/sun55iw6-rtc.h
 new file mode 100644
-index 000000000000..2defc93cfc8a
+index 0000000000..2defc93cfc
 --- /dev/null
 +++ b/include/dt-bindings/clock/sun55iw6-rtc.h
 @@ -0,0 +1,24 @@
@@ -15178,7 +15178,7 @@ index 000000000000..2defc93cfc8a
 +#endif /* _DT_BINDINGS_CLK_SUN55IW6_RTC_H_ */
 diff --git a/include/dt-bindings/clock/sun60iw1-ccu.h b/include/dt-bindings/clock/sun60iw1-ccu.h
 new file mode 100644
-index 000000000000..31719f802d77
+index 0000000000..31719f802d
 --- /dev/null
 +++ b/include/dt-bindings/clock/sun60iw1-ccu.h
 @@ -0,0 +1,256 @@
@@ -15440,7 +15440,7 @@ index 000000000000..31719f802d77
 +#endif /* _DT_BINDINGS_CLK_SUN60IW1_H_ */
 diff --git a/include/dt-bindings/clock/sun60iw1-dsp-ccu.h b/include/dt-bindings/clock/sun60iw1-dsp-ccu.h
 new file mode 100644
-index 000000000000..c3bbfb904ab3
+index 0000000000..c3bbfb904a
 --- /dev/null
 +++ b/include/dt-bindings/clock/sun60iw1-dsp-ccu.h
 @@ -0,0 +1,49 @@
@@ -15495,7 +15495,7 @@ index 000000000000..c3bbfb904ab3
 +#endif /* _DT_BINDINGS_CLK_SUN60IW1_DSP_CCU_H_ */
 diff --git a/include/dt-bindings/clock/sun60iw1-r-ccu.h b/include/dt-bindings/clock/sun60iw1-r-ccu.h
 new file mode 100644
-index 000000000000..5bac9135879a
+index 0000000000..5bac913587
 --- /dev/null
 +++ b/include/dt-bindings/clock/sun60iw1-r-ccu.h
 @@ -0,0 +1,41 @@
@@ -15542,7 +15542,7 @@ index 000000000000..5bac9135879a
 +#endif /* _DT_BINDINGS_CLK_SUN60IW1_R_CCU_H_ */
 diff --git a/include/dt-bindings/clock/sun60iw1-rtc.h b/include/dt-bindings/clock/sun60iw1-rtc.h
 new file mode 100644
-index 000000000000..9441250d2ff1
+index 0000000000..9441250d2f
 --- /dev/null
 +++ b/include/dt-bindings/clock/sun60iw1-rtc.h
 @@ -0,0 +1,23 @@
@@ -15571,7 +15571,7 @@ index 000000000000..9441250d2ff1
 +#endif /* _DT_BINDINGS_CLK_SUN60IW1_RTC_H_ */
 diff --git a/include/dt-bindings/clock/sun60iw2-ccu.h b/include/dt-bindings/clock/sun60iw2-ccu.h
 new file mode 100644
-index 000000000000..54689b563fa2
+index 0000000000..54689b563f
 --- /dev/null
 +++ b/include/dt-bindings/clock/sun60iw2-ccu.h
 @@ -0,0 +1,336 @@
@@ -15913,7 +15913,7 @@ index 000000000000..54689b563fa2
 +#endif /* _DT_BINDINGS_CLK_SUN60IW2_H_ */
 diff --git a/include/dt-bindings/clock/sun60iw2-cpupll-ccu.h b/include/dt-bindings/clock/sun60iw2-cpupll-ccu.h
 new file mode 100644
-index 000000000000..cd791eba207d
+index 0000000000..cd791eba20
 --- /dev/null
 +++ b/include/dt-bindings/clock/sun60iw2-cpupll-ccu.h
 @@ -0,0 +1,18 @@
@@ -15937,7 +15937,7 @@ index 000000000000..cd791eba207d
 +#endif /* _DT_BINDINGS_CLK_SUN60IW2_CPUPLL_H_ */
 diff --git a/include/dt-bindings/clock/sun60iw2-r-ccu.h b/include/dt-bindings/clock/sun60iw2-r-ccu.h
 new file mode 100644
-index 000000000000..7bd8983a39ef
+index 0000000000..7bd8983a39
 --- /dev/null
 +++ b/include/dt-bindings/clock/sun60iw2-r-ccu.h
 @@ -0,0 +1,49 @@
@@ -15992,7 +15992,7 @@ index 000000000000..7bd8983a39ef
 +#endif /* _DT_BINDINGS_CLK_SUN60IW2_R_CCU_H_ */
 diff --git a/include/dt-bindings/clock/sun60iw2-rtc.h b/include/dt-bindings/clock/sun60iw2-rtc.h
 new file mode 100644
-index 000000000000..83fc97d75370
+index 0000000000..83fc97d753
 --- /dev/null
 +++ b/include/dt-bindings/clock/sun60iw2-rtc.h
 @@ -0,0 +1,26 @@
@@ -16024,7 +16024,7 @@ index 000000000000..83fc97d75370
 +#endif /* _DT_BINDINGS_CLK_SUN60IW2_RTC_H_ */
 diff --git a/include/dt-bindings/clock/sun65iw1-ccu.h b/include/dt-bindings/clock/sun65iw1-ccu.h
 new file mode 100644
-index 000000000000..4be9718fec23
+index 0000000000..4be9718fec
 --- /dev/null
 +++ b/include/dt-bindings/clock/sun65iw1-ccu.h
 @@ -0,0 +1,188 @@
@@ -16218,7 +16218,7 @@ index 000000000000..4be9718fec23
 +#endif /* _DT_BINDINGS_CLK_SUN65IW1_H_ */
 diff --git a/include/dt-bindings/clock/sun65iw1-r-ccu.h b/include/dt-bindings/clock/sun65iw1-r-ccu.h
 new file mode 100644
-index 000000000000..688489fcc899
+index 0000000000..688489fcc8
 --- /dev/null
 +++ b/include/dt-bindings/clock/sun65iw1-r-ccu.h
 @@ -0,0 +1,37 @@
@@ -16261,7 +16261,7 @@ index 000000000000..688489fcc899
 +#endif /* _DT_BINDINGS_CLK_SUN65IW1_R_CCU_H_ */
 diff --git a/include/dt-bindings/clock/sun65iw1-rtc.h b/include/dt-bindings/clock/sun65iw1-rtc.h
 new file mode 100644
-index 000000000000..4d296a275697
+index 0000000000..4d296a2756
 --- /dev/null
 +++ b/include/dt-bindings/clock/sun65iw1-rtc.h
 @@ -0,0 +1,23 @@
@@ -16290,7 +16290,7 @@ index 000000000000..4d296a275697
 +#endif /* _DT_BINDINGS_CLK_SUN65IW1_RTC_H_ */
 diff --git a/include/dt-bindings/clock/sun8iw11-ccu.h b/include/dt-bindings/clock/sun8iw11-ccu.h
 new file mode 100644
-index 000000000000..353e67d87d78
+index 0000000000..353e67d87d
 --- /dev/null
 +++ b/include/dt-bindings/clock/sun8iw11-ccu.h
 @@ -0,0 +1,182 @@
@@ -16478,7 +16478,7 @@ index 000000000000..353e67d87d78
 +#endif /* _DT_BINDINGS_CLK_SUN8IW11_H_ */
 diff --git a/include/dt-bindings/clock/sun8iw18-ccu.h b/include/dt-bindings/clock/sun8iw18-ccu.h
 new file mode 100644
-index 000000000000..f53dfc7b1ffb
+index 0000000000..f53dfc7b1f
 --- /dev/null
 +++ b/include/dt-bindings/clock/sun8iw18-ccu.h
 @@ -0,0 +1,87 @@
@@ -16571,7 +16571,7 @@ index 000000000000..f53dfc7b1ffb
 +#endif /* _DT_BINDINGS_CLK_SUN8IW18_H_ */
 diff --git a/include/dt-bindings/clock/sun8iw18-rtc.h b/include/dt-bindings/clock/sun8iw18-rtc.h
 new file mode 100644
-index 000000000000..faab9de11005
+index 0000000000..faab9de110
 --- /dev/null
 +++ b/include/dt-bindings/clock/sun8iw18-rtc.h
 @@ -0,0 +1,16 @@
@@ -16593,7 +16593,7 @@ index 000000000000..faab9de11005
 +#endif /* _DT_BINDINGS_CLK_SUN8IW18_RTC_H_ */
 diff --git a/include/dt-bindings/clock/sun8iw20-ccu.h b/include/dt-bindings/clock/sun8iw20-ccu.h
 new file mode 100644
-index 000000000000..bbab8e1a0628
+index 0000000000..bbab8e1a06
 --- /dev/null
 +++ b/include/dt-bindings/clock/sun8iw20-ccu.h
 @@ -0,0 +1,161 @@
@@ -16760,7 +16760,7 @@ index 000000000000..bbab8e1a0628
 +#endif /* _DT_BINDINGS_CLK_SUN8IW20_H_ */
 diff --git a/include/dt-bindings/clock/sun8iw20-r-ccu.h b/include/dt-bindings/clock/sun8iw20-r-ccu.h
 new file mode 100644
-index 000000000000..d96ae9dc0471
+index 0000000000..d96ae9dc04
 --- /dev/null
 +++ b/include/dt-bindings/clock/sun8iw20-r-ccu.h
 @@ -0,0 +1,22 @@
@@ -16788,7 +16788,7 @@ index 000000000000..d96ae9dc0471
 +#endif /* _DT_BINDINGS_CLK_SUN8IW20_R_CCU_H_ */
 diff --git a/include/dt-bindings/clock/sun8iw20-rtc.h b/include/dt-bindings/clock/sun8iw20-rtc.h
 new file mode 100644
-index 000000000000..cf91765f1f0f
+index 0000000000..cf91765f1f
 --- /dev/null
 +++ b/include/dt-bindings/clock/sun8iw20-rtc.h
 @@ -0,0 +1,22 @@
@@ -16816,7 +16816,7 @@ index 000000000000..cf91765f1f0f
 +#endif /* _DT_BINDINGS_CLK_SUN8IW20_RTC_H_ */
 diff --git a/include/dt-bindings/clock/sun8iw21-ccu.h b/include/dt-bindings/clock/sun8iw21-ccu.h
 new file mode 100644
-index 000000000000..7bf0883a55e0
+index 0000000000..7bf0883a55
 --- /dev/null
 +++ b/include/dt-bindings/clock/sun8iw21-ccu.h
 @@ -0,0 +1,139 @@
@@ -16961,7 +16961,7 @@ index 000000000000..7bf0883a55e0
 +#endif /* _DT_BINDINGS_CLK_SUN8IW21_H_ */
 diff --git a/include/dt-bindings/clock/sun8iw21-r-ccu.h b/include/dt-bindings/clock/sun8iw21-r-ccu.h
 new file mode 100644
-index 000000000000..f52b731e826b
+index 0000000000..f52b731e82
 --- /dev/null
 +++ b/include/dt-bindings/clock/sun8iw21-r-ccu.h
 @@ -0,0 +1,16 @@
@@ -16983,7 +16983,7 @@ index 000000000000..f52b731e826b
 +#endif /* _DT_BINDINGS_CLK_SUN8IW21_R_CCU_H_ */
 diff --git a/include/dt-bindings/clock/sun8iw21-rtc.h b/include/dt-bindings/clock/sun8iw21-rtc.h
 new file mode 100644
-index 000000000000..a1c0de1259a7
+index 0000000000..a1c0de1259
 --- /dev/null
 +++ b/include/dt-bindings/clock/sun8iw21-rtc.h
 @@ -0,0 +1,24 @@
@@ -17013,7 +17013,7 @@ index 000000000000..a1c0de1259a7
 +#endif /* _DT_BINDINGS_CLK_SUN8IW21_RTC_H_ */
 diff --git a/include/dt-bindings/clock/sunxi-ccu.h b/include/dt-bindings/clock/sunxi-ccu.h
 new file mode 100644
-index 000000000000..7ba691de3d42
+index 0000000000..7ba691de3d
 --- /dev/null
 +++ b/include/dt-bindings/clock/sunxi-ccu.h
 @@ -0,0 +1,41 @@
@@ -17060,7 +17060,7 @@ index 000000000000..7ba691de3d42
 +#endif
 diff --git a/include/dt-bindings/clock/sunxi-clk.h b/include/dt-bindings/clock/sunxi-clk.h
 new file mode 100644
-index 000000000000..7727a50f4e8e
+index 0000000000..7727a50f4e
 --- /dev/null
 +++ b/include/dt-bindings/clock/sunxi-clk.h
 @@ -0,0 +1,18 @@
@@ -17084,7 +17084,7 @@ index 000000000000..7727a50f4e8e
 +#endif
 diff --git a/include/dt-bindings/display/lcd_command.h b/include/dt-bindings/display/lcd_command.h
 new file mode 100644
-index 000000000000..486c32757946
+index 0000000000..486c327579
 --- /dev/null
 +++ b/include/dt-bindings/display/lcd_command.h
 @@ -0,0 +1,48 @@
@@ -17138,7 +17138,7 @@ index 000000000000..486c32757946
 +#endif
 diff --git a/include/dt-bindings/display/sunxi-lcd.h b/include/dt-bindings/display/sunxi-lcd.h
 new file mode 100644
-index 000000000000..7b1100f9d1f6
+index 0000000000..7b1100f9d1
 --- /dev/null
 +++ b/include/dt-bindings/display/sunxi-lcd.h
 @@ -0,0 +1,33 @@
@@ -17177,7 +17177,7 @@ index 000000000000..7b1100f9d1f6
 +#endif
 diff --git a/include/dt-bindings/gpio/sun4i-gpio.h b/include/dt-bindings/gpio/sun4i-gpio.h
 new file mode 100644
-index 000000000000..44344c1ff16f
+index 0000000000..44344c1ff1
 --- /dev/null
 +++ b/include/dt-bindings/gpio/sun4i-gpio.h
 @@ -0,0 +1,28 @@
@@ -17211,7 +17211,7 @@ index 000000000000..44344c1ff16f
 +#endif /* __DT_SUN4I_GPIO_H */
 diff --git a/include/dt-bindings/gpio/sun55iw3-share-irq-dt.h b/include/dt-bindings/gpio/sun55iw3-share-irq-dt.h
 new file mode 100644
-index 000000000000..3dda39731d1c
+index 0000000000..3dda39731d
 --- /dev/null
 +++ b/include/dt-bindings/gpio/sun55iw3-share-irq-dt.h
 @@ -0,0 +1,99 @@
@@ -17316,7 +17316,7 @@ index 000000000000..3dda39731d1c
 +#endif
 diff --git a/include/dt-bindings/gpio/sun8iw21-share-irq.h b/include/dt-bindings/gpio/sun8iw21-share-irq.h
 new file mode 100644
-index 000000000000..094317c30679
+index 0000000000..094317c306
 --- /dev/null
 +++ b/include/dt-bindings/gpio/sun8iw21-share-irq.h
 @@ -0,0 +1,54 @@
@@ -17376,7 +17376,7 @@ index 000000000000..094317c30679
 +#endif
 diff --git a/include/dt-bindings/power/a523-power.h b/include/dt-bindings/power/a523-power.h
 new file mode 100644
-index 000000000000..bea74bad660d
+index 0000000000..bea74bad66
 --- /dev/null
 +++ b/include/dt-bindings/power/a523-power.h
 @@ -0,0 +1,18 @@
@@ -17400,7 +17400,7 @@ index 000000000000..bea74bad660d
 +#endif
 diff --git a/include/dt-bindings/power/r528-power.h b/include/dt-bindings/power/r528-power.h
 new file mode 100644
-index 000000000000..e3de44ae7179
+index 0000000000..e3de44ae71
 --- /dev/null
 +++ b/include/dt-bindings/power/r528-power.h
 @@ -0,0 +1,9 @@
@@ -17415,7 +17415,7 @@ index 000000000000..e3de44ae7179
 +#endif
 diff --git a/include/dt-bindings/power/sun60iw2-power.h b/include/dt-bindings/power/sun60iw2-power.h
 new file mode 100644
-index 000000000000..6f05062cabe9
+index 0000000000..6f05062cab
 --- /dev/null
 +++ b/include/dt-bindings/power/sun60iw2-power.h
 @@ -0,0 +1,17 @@
@@ -17438,7 +17438,7 @@ index 000000000000..6f05062cabe9
 +#endif
 diff --git a/include/dt-bindings/power/tv303-power.h b/include/dt-bindings/power/tv303-power.h
 new file mode 100644
-index 000000000000..964d6a971989
+index 0000000000..964d6a9719
 --- /dev/null
 +++ b/include/dt-bindings/power/tv303-power.h
 @@ -0,0 +1,11 @@
@@ -17455,7 +17455,7 @@ index 000000000000..964d6a971989
 +#endif
 diff --git a/include/dt-bindings/power/v851-power.h b/include/dt-bindings/power/v851-power.h
 new file mode 100644
-index 000000000000..a6560a79d775
+index 0000000000..a6560a79d7
 --- /dev/null
 +++ b/include/dt-bindings/power/v851-power.h
 @@ -0,0 +1,9 @@
@@ -17470,7 +17470,7 @@ index 000000000000..a6560a79d775
 +#endif
 diff --git a/include/dt-bindings/power/v853-power.h b/include/dt-bindings/power/v853-power.h
 new file mode 100644
-index 000000000000..123da9a24f2c
+index 0000000000..123da9a24f
 --- /dev/null
 +++ b/include/dt-bindings/power/v853-power.h
 @@ -0,0 +1,9 @@
@@ -17485,7 +17485,7 @@ index 000000000000..123da9a24f2c
 +#endif
 diff --git a/include/dt-bindings/reset/sun20iw5-aon-ccu.h b/include/dt-bindings/reset/sun20iw5-aon-ccu.h
 new file mode 100644
-index 000000000000..fe6d40d0320b
+index 0000000000..fe6d40d032
 --- /dev/null
 +++ b/include/dt-bindings/reset/sun20iw5-aon-ccu.h
 @@ -0,0 +1,12 @@
@@ -17503,7 +17503,7 @@ index 000000000000..fe6d40d0320b
 +#endif /* _DT_BINDINGS_RESET_SUN20IW5_H_ */
 diff --git a/include/dt-bindings/reset/sun20iw5-app-ccu.h b/include/dt-bindings/reset/sun20iw5-app-ccu.h
 new file mode 100644
-index 000000000000..221776724033
+index 0000000000..2217767240
 --- /dev/null
 +++ b/include/dt-bindings/reset/sun20iw5-app-ccu.h
 @@ -0,0 +1,67 @@
@@ -17575,7 +17575,7 @@ index 000000000000..221776724033
 +
 +#endif /* _DT_BINDINGS_RESET_SUN20IW5_APP_H_ */
 diff --git a/include/dt-bindings/reset/sun50i-a100-ccu.h b/include/dt-bindings/reset/sun50i-a100-ccu.h
-index d13764bc1860..92c9f433bfb2 100644
+index d13764bc18..92c9f433bf 100644
 --- a/include/dt-bindings/reset/sun50i-a100-ccu.h
 +++ b/include/dt-bindings/reset/sun50i-a100-ccu.h
 @@ -1,4 +1,5 @@
@@ -17586,7 +17586,7 @@ index d13764bc1860..92c9f433bfb2 100644
   * Copyright (c) 2020 Yangtao Li <frank@allwinnertech.com>
   */
 diff --git a/include/dt-bindings/reset/sun50i-a100-r-ccu.h b/include/dt-bindings/reset/sun50i-a100-r-ccu.h
-index 1e7c4431f03c..df9314478eed 100644
+index 1e7c4431f0..df9314478e 100644
 --- a/include/dt-bindings/reset/sun50i-a100-r-ccu.h
 +++ b/include/dt-bindings/reset/sun50i-a100-r-ccu.h
 @@ -1,4 +1,5 @@
@@ -17598,7 +17598,7 @@ index 1e7c4431f03c..df9314478eed 100644
   */
 diff --git a/include/dt-bindings/reset/sun50iw10-ccu.h b/include/dt-bindings/reset/sun50iw10-ccu.h
 new file mode 100644
-index 000000000000..dd645eaaa154
+index 0000000000..dd645eaaa1
 --- /dev/null
 +++ b/include/dt-bindings/reset/sun50iw10-ccu.h
 @@ -0,0 +1,79 @@
@@ -17683,7 +17683,7 @@ index 000000000000..dd645eaaa154
 +#endif /* _DT_BINDINGS_RESET_SUN50IW10_H_ */
 diff --git a/include/dt-bindings/reset/sun50iw10-r-ccu.h b/include/dt-bindings/reset/sun50iw10-r-ccu.h
 new file mode 100644
-index 000000000000..fc0817b69ffe
+index 0000000000..fc0817b69f
 --- /dev/null
 +++ b/include/dt-bindings/reset/sun50iw10-r-ccu.h
 @@ -0,0 +1,19 @@
@@ -17708,7 +17708,7 @@ index 000000000000..fc0817b69ffe
 +#endif /* _DT_BINDINGS_RST_SUN50IW10_R_CCU_H_ */
 diff --git a/include/dt-bindings/reset/sun50iw12-ccu.h b/include/dt-bindings/reset/sun50iw12-ccu.h
 new file mode 100644
-index 000000000000..d13cf3b7d3e5
+index 0000000000..d13cf3b7d3
 --- /dev/null
 +++ b/include/dt-bindings/reset/sun50iw12-ccu.h
 @@ -0,0 +1,69 @@
@@ -17783,7 +17783,7 @@ index 000000000000..d13cf3b7d3e5
 +#endif /* _DT_BINDINGS_RESET_SUN50IW12_H_ */
 diff --git a/include/dt-bindings/reset/sun50iw12-r-ccu.h b/include/dt-bindings/reset/sun50iw12-r-ccu.h
 new file mode 100644
-index 000000000000..13054faec288
+index 0000000000..13054faec2
 --- /dev/null
 +++ b/include/dt-bindings/reset/sun50iw12-r-ccu.h
 @@ -0,0 +1,23 @@
@@ -17812,7 +17812,7 @@ index 000000000000..13054faec288
 +#endif /* _DT_BINDINGS_RST_SUN50IW12_R_CCU_H_ */
 diff --git a/include/dt-bindings/reset/sun50iw9-ccu.h b/include/dt-bindings/reset/sun50iw9-ccu.h
 new file mode 100644
-index 000000000000..6386672b16c2
+index 0000000000..6386672b16
 --- /dev/null
 +++ b/include/dt-bindings/reset/sun50iw9-ccu.h
 @@ -0,0 +1,77 @@
@@ -17895,7 +17895,7 @@ index 000000000000..6386672b16c2
 +#endif /* _DT_BINDINGS_RESET_SUN50IW9_H_ */
 diff --git a/include/dt-bindings/reset/sun50iw9-r-ccu.h b/include/dt-bindings/reset/sun50iw9-r-ccu.h
 new file mode 100644
-index 000000000000..5b8750402f98
+index 0000000000..5b8750402f
 --- /dev/null
 +++ b/include/dt-bindings/reset/sun50iw9-r-ccu.h
 @@ -0,0 +1,14 @@
@@ -17915,7 +17915,7 @@ index 000000000000..5b8750402f98
 +#endif /* _DT_BINDINGS_RST_SUN50IW9_R_CCU_H_ */
 diff --git a/include/dt-bindings/reset/sun55iw3-ccu.h b/include/dt-bindings/reset/sun55iw3-ccu.h
 new file mode 100644
-index 000000000000..c22018b67b7c
+index 0000000000..c22018b67b
 --- /dev/null
 +++ b/include/dt-bindings/reset/sun55iw3-ccu.h
 @@ -0,0 +1,88 @@
@@ -18009,7 +18009,7 @@ index 000000000000..c22018b67b7c
 +#endif /* _DT_BINDINGS_RESET_SUN55IW3_H_ */
 diff --git a/include/dt-bindings/reset/sun55iw3-mcu-ccu.h b/include/dt-bindings/reset/sun55iw3-mcu-ccu.h
 new file mode 100644
-index 000000000000..c849a3657b0e
+index 0000000000..c849a3657b
 --- /dev/null
 +++ b/include/dt-bindings/reset/sun55iw3-mcu-ccu.h
 @@ -0,0 +1,31 @@
@@ -18046,7 +18046,7 @@ index 000000000000..c849a3657b0e
 +#endif /* _DT_BINDINGS_RST_SUN55IW3_MCU_CCU_H_ */
 diff --git a/include/dt-bindings/reset/sun55iw3-r-ccu.h b/include/dt-bindings/reset/sun55iw3-r-ccu.h
 new file mode 100644
-index 000000000000..bdaab6470d62
+index 0000000000..bdaab6470d
 --- /dev/null
 +++ b/include/dt-bindings/reset/sun55iw3-r-ccu.h
 @@ -0,0 +1,27 @@
@@ -18079,7 +18079,7 @@ index 000000000000..bdaab6470d62
 +#endif /* _DT_BINDINGS_RST_SUN55IW3_R_CCU_H_ */
 diff --git a/include/dt-bindings/reset/sun55iw5-ccu.h b/include/dt-bindings/reset/sun55iw5-ccu.h
 new file mode 100644
-index 000000000000..6e8f30a90a5c
+index 0000000000..6e8f30a90a
 --- /dev/null
 +++ b/include/dt-bindings/reset/sun55iw5-ccu.h
 @@ -0,0 +1,60 @@
@@ -18145,7 +18145,7 @@ index 000000000000..6e8f30a90a5c
 +#endif /* _DT_BINDINGS_RESET_SUN55IW3_H_ */
 diff --git a/include/dt-bindings/reset/sun55iw5-r-ccu.h b/include/dt-bindings/reset/sun55iw5-r-ccu.h
 new file mode 100644
-index 000000000000..81d0d328e9c5
+index 0000000000..81d0d328e9
 --- /dev/null
 +++ b/include/dt-bindings/reset/sun55iw5-r-ccu.h
 @@ -0,0 +1,24 @@
@@ -18175,7 +18175,7 @@ index 000000000000..81d0d328e9c5
 +#endif /* _DT_BINDINGS_RST_SUN55IW5_R_CCU_H_ */
 diff --git a/include/dt-bindings/reset/sun55iw6-ccu.h b/include/dt-bindings/reset/sun55iw6-ccu.h
 new file mode 100644
-index 000000000000..3fd64cc252cd
+index 0000000000..3fd64cc252
 --- /dev/null
 +++ b/include/dt-bindings/reset/sun55iw6-ccu.h
 @@ -0,0 +1,120 @@
@@ -18301,7 +18301,7 @@ index 000000000000..3fd64cc252cd
 +#endif /* _DT_BINDINGS_RESET_SUN55IW6_H_ */
 diff --git a/include/dt-bindings/reset/sun55iw6-r-ccu.h b/include/dt-bindings/reset/sun55iw6-r-ccu.h
 new file mode 100644
-index 000000000000..c0587fe47383
+index 0000000000..c0587fe473
 --- /dev/null
 +++ b/include/dt-bindings/reset/sun55iw6-r-ccu.h
 @@ -0,0 +1,23 @@
@@ -18330,7 +18330,7 @@ index 000000000000..c0587fe47383
 +#endif /* _DT_BINDINGS_RST_SUN55IW6_R_CCU_H_ */
 diff --git a/include/dt-bindings/reset/sun60iw1-ccu.h b/include/dt-bindings/reset/sun60iw1-ccu.h
 new file mode 100644
-index 000000000000..7e792f1d50ef
+index 0000000000..7e792f1d50
 --- /dev/null
 +++ b/include/dt-bindings/reset/sun60iw1-ccu.h
 @@ -0,0 +1,155 @@
@@ -18491,7 +18491,7 @@ index 000000000000..7e792f1d50ef
 +#endif /* _DT_BINDINGS_RESET_SUN60IW1_H_ */
 diff --git a/include/dt-bindings/reset/sun60iw1-dsp-ccu.h b/include/dt-bindings/reset/sun60iw1-dsp-ccu.h
 new file mode 100644
-index 000000000000..319416cdd465
+index 0000000000..319416cdd4
 --- /dev/null
 +++ b/include/dt-bindings/reset/sun60iw1-dsp-ccu.h
 @@ -0,0 +1,30 @@
@@ -18527,7 +18527,7 @@ index 000000000000..319416cdd465
 +#endif /* _DT_BINDINGS_RST_SUN60IW1_DSP_CCU_H_ */
 diff --git a/include/dt-bindings/reset/sun60iw1-r-ccu.h b/include/dt-bindings/reset/sun60iw1-r-ccu.h
 new file mode 100644
-index 000000000000..b41cee2ae40b
+index 0000000000..b41cee2ae4
 --- /dev/null
 +++ b/include/dt-bindings/reset/sun60iw1-r-ccu.h
 @@ -0,0 +1,25 @@
@@ -18558,7 +18558,7 @@ index 000000000000..b41cee2ae40b
 +#endif /* _DT_BINDINGS_RST_SUN60IW1_R_CCU_H_ */
 diff --git a/include/dt-bindings/reset/sun60iw2-ccu.h b/include/dt-bindings/reset/sun60iw2-ccu.h
 new file mode 100644
-index 000000000000..c442591a5dba
+index 0000000000..c442591a5d
 --- /dev/null
 +++ b/include/dt-bindings/reset/sun60iw2-ccu.h
 @@ -0,0 +1,131 @@
@@ -18695,7 +18695,7 @@ index 000000000000..c442591a5dba
 +#endif /* _DT_BINDINGS_RESET_SUN60IW2_H_ */
 diff --git a/include/dt-bindings/reset/sun60iw2-r-ccu.h b/include/dt-bindings/reset/sun60iw2-r-ccu.h
 new file mode 100644
-index 000000000000..0a181e323974
+index 0000000000..0a181e3239
 --- /dev/null
 +++ b/include/dt-bindings/reset/sun60iw2-r-ccu.h
 @@ -0,0 +1,25 @@
@@ -18726,7 +18726,7 @@ index 000000000000..0a181e323974
 +#endif /* _DT_BINDINGS_RST_SUN60IW2_R_CCU_H_ */
 diff --git a/include/dt-bindings/reset/sun65iw1-ccu.h b/include/dt-bindings/reset/sun65iw1-ccu.h
 new file mode 100644
-index 000000000000..5b1be7c64280
+index 0000000000..5b1be7c642
 --- /dev/null
 +++ b/include/dt-bindings/reset/sun65iw1-ccu.h
 @@ -0,0 +1,86 @@
@@ -18818,7 +18818,7 @@ index 000000000000..5b1be7c64280
 +#endif /* _DT_BINDINGS_RESET_SUN65IW1_H_ */
 diff --git a/include/dt-bindings/reset/sun65iw1-r-ccu.h b/include/dt-bindings/reset/sun65iw1-r-ccu.h
 new file mode 100644
-index 000000000000..7566e8403432
+index 0000000000..7566e84034
 --- /dev/null
 +++ b/include/dt-bindings/reset/sun65iw1-r-ccu.h
 @@ -0,0 +1,24 @@
@@ -18848,7 +18848,7 @@ index 000000000000..7566e8403432
 +#endif /* _DT_BINDINGS_RST_SUN65IW1_R_CCU_H_ */
 diff --git a/include/dt-bindings/reset/sun8iw11-ccu.h b/include/dt-bindings/reset/sun8iw11-ccu.h
 new file mode 100644
-index 000000000000..d1529826d80b
+index 0000000000..d1529826d8
 --- /dev/null
 +++ b/include/dt-bindings/reset/sun8iw11-ccu.h
 @@ -0,0 +1,90 @@
@@ -18944,7 +18944,7 @@ index 000000000000..d1529826d80b
 +#endif /* _DT_BINDINGS_RESET_SUN8IW11_H_ */
 diff --git a/include/dt-bindings/reset/sun8iw18-ccu.h b/include/dt-bindings/reset/sun8iw18-ccu.h
 new file mode 100644
-index 000000000000..75131a4ad5bd
+index 0000000000..75131a4ad5
 --- /dev/null
 +++ b/include/dt-bindings/reset/sun8iw18-ccu.h
 @@ -0,0 +1,51 @@
@@ -19001,7 +19001,7 @@ index 000000000000..75131a4ad5bd
 +#endif /* _DT_BINDINGS_RESET_SUN8IW18_H_ */
 diff --git a/include/dt-bindings/reset/sun8iw20-ccu.h b/include/dt-bindings/reset/sun8iw20-ccu.h
 new file mode 100644
-index 000000000000..7f3d267a2aa2
+index 0000000000..7f3d267a2a
 --- /dev/null
 +++ b/include/dt-bindings/reset/sun8iw20-ccu.h
 @@ -0,0 +1,79 @@
@@ -19086,7 +19086,7 @@ index 000000000000..7f3d267a2aa2
 +#endif /* _DT_BINDINGS_RESET_SUN8IW20_H_ */
 diff --git a/include/dt-bindings/reset/sun8iw20-r-ccu.h b/include/dt-bindings/reset/sun8iw20-r-ccu.h
 new file mode 100644
-index 000000000000..e186181a3f83
+index 0000000000..e186181a3f
 --- /dev/null
 +++ b/include/dt-bindings/reset/sun8iw20-r-ccu.h
 @@ -0,0 +1,17 @@
@@ -19109,7 +19109,7 @@ index 000000000000..e186181a3f83
 +#endif /* _DT_BINDINGS_RST_SUN8IW20_R_CCU_H_ */
 diff --git a/include/dt-bindings/reset/sun8iw21-ccu.h b/include/dt-bindings/reset/sun8iw21-ccu.h
 new file mode 100644
-index 000000000000..ea23066e572d
+index 0000000000..ea23066e57
 --- /dev/null
 +++ b/include/dt-bindings/reset/sun8iw21-ccu.h
 @@ -0,0 +1,60 @@
@@ -19175,7 +19175,7 @@ index 000000000000..ea23066e572d
 +#endif /* _DT_BINDINGS_RESET_SUN8IW21_H_ */
 diff --git a/include/dt-bindings/reset/sun8iw21-r-ccu.h b/include/dt-bindings/reset/sun8iw21-r-ccu.h
 new file mode 100644
-index 000000000000..c000c07571a8
+index 0000000000..c000c07571
 --- /dev/null
 +++ b/include/dt-bindings/reset/sun8iw21-r-ccu.h
 @@ -0,0 +1,14 @@
@@ -19195,7 +19195,7 @@ index 000000000000..c000c07571a8
 +#endif /* _DT_BINDINGS_RESET_SUN8IW21_R_CCU_H_ */
 diff --git a/include/dt-bindings/spi/sunxi-spi.h b/include/dt-bindings/spi/sunxi-spi.h
 new file mode 100644
-index 000000000000..179bc59a1c95
+index 0000000000..179bc59a1c
 --- /dev/null
 +++ b/include/dt-bindings/spi/sunxi-spi.h
 @@ -0,0 +1,18 @@
