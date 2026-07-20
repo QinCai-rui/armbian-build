@@ -12,15 +12,15 @@ function bootscript_export_display_console() {
 	typeset ITEM
 	typeset CONSOLEARGS
 
-	for ITEM in ${DISPLAYCON//,/ } ; do
+	for ITEM in ${DISPLAYCON//,/ }; do
 		CONSOLEARGS="${CONSOLEARGS:-}${CONSOLEARGS:+ }console=${ITEM//:/,}"
 	done
 
-	for ITEM in $SRC_CMDLINE ; do
-		if [[ ! 'console' == "${ITEM%%=*}" ]] ; then
+	for ITEM in $SRC_CMDLINE; do
+		if [[ ! 'console' == "${ITEM%%=*}" ]]; then
 			continue
 		fi
-		if [[ "${ITEM#*=}" =~ 'tty'[AGSU]* ]] ; then
+		if [[ "${ITEM#*=}" =~ 'tty'[AGSU]* ]]; then
 			continue
 		fi
 		CONSOLEARGS="${CONSOLEARGS:-}${CONSOLEARGS:+ }${ITEM:?}"
@@ -35,15 +35,15 @@ function bootscript_export_serial_console() {
 	typeset ITEM
 	typeset CONSOLEARGS
 
-	for ITEM in ${SERIALCON//,/ } ; do
+	for ITEM in ${SERIALCON//,/ }; do
 		CONSOLEARGS="${CONSOLEARGS:-}${CONSOLEARGS:+ }console=${ITEM//:/,}"
 	done
 
-	for ITEM in $SRC_CMDLINE ; do
-		if [[ ! 'console' == "${ITEM%%=*}" ]] ; then
+	for ITEM in $SRC_CMDLINE; do
+		if [[ ! 'console' == "${ITEM%%=*}" ]]; then
 			continue
 		fi
-		if [[ ! "${ITEM#*=}" =~ 'tty'[AGSU]* ]] ; then
+		if [[ ! "${ITEM#*=}" =~ 'tty'[AGSU]* ]]; then
 			continue
 		fi
 		CONSOLEARGS="${CONSOLEARGS:-}${CONSOLEARGS:+ }${ITEM:?}"
@@ -67,7 +67,7 @@ function render_bootscript_template() { (
 
 	export $(set | sed -En '/^BOOTSCRIPT_TEMPLATE__/s/=.*$//p')
 	envsubst "'${SHELL_FORMAT}'"
-) }
+); }
 
 function proof_rendered_bootscript_template() {
 	! egrep '\$\{?BOOTSCRIPT_TEMPLATE__' "${1:?}"
@@ -228,18 +228,18 @@ function install_distribution_agnostic() {
 
 		if [[ -n "${BOOTSCRIPT}" ]]; then # @TODO: && "${BOOTCONFIG}" != "none"
 			case "${bootscript_src}" in
-			*'.template')
-				display_alert "Rendering boot script template" "${bootscript_src_path}/${bootscript_src}" "info"
-				run_host_command_logged cat "${bootscript_src_path}/${bootscript_src}" | render_bootscript_template > "${SDCARD}/boot/${bootscript_dst}"
+				*'.template')
+					display_alert "Rendering boot script template" "${bootscript_src_path}/${bootscript_src}" "info"
+					run_host_command_logged cat "${bootscript_src_path}/${bootscript_src}" | render_bootscript_template > "${SDCARD}/boot/${bootscript_dst}"
 
-				if ! proof_rendered_bootscript_template "${SDCARD}/boot/${bootscript_dst}" ; then
-					exit_with_error "Render of bootscript template was not successful. Inspect '${SDCARD}/boot/${bootscript_dst}' for unrendered variables."
-				fi
-				;;
-			*)
-				display_alert "Deploying boot script" "${bootscript_src_path}/${bootscript_src}" "info"
-				run_host_command_logged cp -pv "${bootscript_src_path}/${bootscript_src}" "${SDCARD}/boot/${bootscript_dst}"
-				;;
+					if ! proof_rendered_bootscript_template "${SDCARD}/boot/${bootscript_dst}"; then
+						exit_with_error "Render of bootscript template was not successful. Inspect '${SDCARD}/boot/${bootscript_dst}' for unrendered variables."
+					fi
+					;;
+				*)
+					display_alert "Deploying boot script" "${bootscript_src_path}/${bootscript_src}" "info"
+					run_host_command_logged cp -pv "${bootscript_src_path}/${bootscript_src}" "${SDCARD}/boot/${bootscript_dst}"
+					;;
 			esac
 		fi
 
@@ -378,7 +378,6 @@ function install_distribution_agnostic() {
 
 		if [[ "${KERNEL_HAS_WORKING_HEADERS:-"no"}" == "yes" ]]; then
 			if [[ $INSTALL_HEADERS == yes ]]; then # @TODO remove? might be a good idea to always install headers.
-				chroot_sdcard_apt_get_install "pahole"
 				install_artifact_deb_chroot "linux-headers"
 			fi
 		fi
@@ -406,14 +405,6 @@ function install_distribution_agnostic() {
 	# install board support packages
 	install_artifact_deb_chroot "armbian-bsp-cli"
 
-	# install armbian-desktop
-	if [[ $BUILD_DESKTOP == yes ]]; then
-		install_artifact_deb_chroot "armbian-desktop"
-		install_artifact_deb_chroot "armbian-bsp-desktop"
-		# install display manager and PACKAGE_LIST_DESKTOP_FULL packages if enabled per board
-		desktop_postinstall
-	fi
-
 	# install armbian-zsh
 	if [[ "${PACKAGE_LIST_RM}" != *armbian-zsh* ]]; then
 		if [[ $BUILD_MINIMAL != yes ]]; then
@@ -425,7 +416,7 @@ function install_distribution_agnostic() {
 	if [[ $PLYMOUTH == yes ]]; then
 		install_artifact_deb_chroot "armbian-plymouth-theme"
 	else
-		chroot_sdcard_apt_get_remove --auto-remove plymouth
+		chroot_sdcard_apt_get_remove --auto-remove plymouth 2> /dev/null || true
 	fi
 
 	# freeze armbian packages
@@ -514,7 +505,8 @@ function install_distribution_agnostic() {
 	# example: SERIALCON="ttyS0:15000000,ttyGS1"
 	#
 	ifs=$IFS
-	for i in $(echo "${SERIALCON:-'ttyS0'}" | sed "s/,/ /g"); do
+	local _serialcon_csv="${SERIALCON:-ttyS0}"
+	for i in ${_serialcon_csv//,/ }; do
 		IFS=':' read -r -a array <<< "$i"
 		[[ "${array[0]}" == "tty1" ]] && continue # Don't enable tty1 as serial console.
 		display_alert "Enabling serial console" "${array[0]}" "info"
@@ -557,15 +549,15 @@ function install_distribution_agnostic() {
 	cp "${SDCARD}"/etc/armbian-release "${SDCARD}"/etc/armbian-image-release
 
 	# save list of enabled extensions for this image
-	EXTENSIONS=${ENABLE_EXTENSIONS} >> "${SDCARD}"/etc/armbian-image-release
+	echo "EXTENSIONS='${ENABLE_EXTENSIONS}'" >> "${SDCARD}"/etc/armbian-image-release
 
 	# store vendor pretty name to image only. We don't need to save this in BSP upgrade
 	# files. Vendor should be only defined at build image stage.
 	[[ -z $VENDORPRETTYNAME ]] && VENDORPRETTYNAME="${VENDOR}"
-	VENDORPRETTYNAME="$VENDORPRETTYNAME" >> "${SDCARD}"/etc/armbian-image-release
+	echo "VENDORPRETTYNAME='$VENDORPRETTYNAME'" >> "${SDCARD}"/etc/armbian-image-release
 
 	# DNS fix. package resolvconf is not available everywhere
-	if [ -d "${SDCARD}"/etc/resolvconf/resolv.conf.d ] && [ -n "$NAMESERVER" ]; then
+	if [[ -d "${SDCARD}/etc/resolvconf/resolv.conf.d" && -n "$NAMESERVER" ]]; then
 		echo "nameserver $NAMESERVER" > "${SDCARD}"/etc/resolvconf/resolv.conf.d/head
 	fi
 

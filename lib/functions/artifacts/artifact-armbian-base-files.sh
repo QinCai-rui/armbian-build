@@ -56,7 +56,7 @@ function artifact_armbian-base-files_prepare_version() {
 	artifact_name="armbian-base-files-${RELEASE}-${ARCH}"
 	artifact_type="deb"
 	artifact_deb_repo="extra/${RELEASE}-utils" # release-specific repo (jammy etc)
-	artifact_deb_arch="${ARCH}"    # arch-specific packages (arm64 etc)
+	artifact_deb_arch="${ARCH}"                # arch-specific packages (arm64 etc)
 	artifact_map_packages=(["armbian-base-files"]="base-files")
 
 	# Important. Force the final reversioned version to contain the release name.
@@ -114,7 +114,7 @@ function compile_armbian-base-files() {
 		Version: ${artifact_version}
 	EOD
 	# Keep everything else from original
-	cat "${destination}/DEBIAN/control" | grep -vP '^(Maintainer|Version):' >> "${destination}/DEBIAN/control.new"
+	grep -vP '^(Maintainer|Version):' "${destination}/DEBIAN/control" >> "${destination}/DEBIAN/control.new"
 
 	# Replace 'Debian' with 'Armbian'.
 	sed -i "s/Debian/${VENDOR}/g" "${destination}/DEBIAN/control.new"
@@ -167,6 +167,25 @@ function compile_armbian-base-files() {
 	sed -i "s|^BUG_REPORT_URL=.*|BUG_REPORT_URL=\"${VENDORBUGS}\"|" "${destination}"/etc/os-release
 	sed -i "s|^PRIVACY_POLICY_URL=.*|PRIVACY_POLICY_URL=\"${VENDORPRIVACY}\"|" "${destination}"/etc/os-release
 	sed -i "s|^LOGO=.*|LOGO=\"${VENDORLOGO}\"|" "${destination}"/etc/os-release
+
+	# Replace Ubuntu logo files with symlinks to Armbian's.
+	# Ubuntu hardcodes lookups for ubuntu-logo*.svg / ubuntu-logo*.png
+	# in GNOME Settings → About and other places. The Armbian logos
+	# are shipped by armbian-bsp-cli (packages/bsp/common/usr/share/
+	# pixmaps/armbian-logo*). Since we own this base-files repack,
+	# we can safely replace the upstream files with relative symlinks.
+	if [[ -d "${destination}/usr/share/pixmaps" ]]; then
+		for suffix in ".svg" "-text.png" "-text-dark.png" "-text.svg" "-text-dark.svg"; do
+			# Only replace files actually present in the upstream
+			# base-files payload — don't create symlinks for variants
+			# that don't exist in this release.
+			local upstream="${destination}/usr/share/pixmaps/ubuntu-logo${suffix}"
+			if [[ -f "${upstream}" ]]; then
+				rm -f "${upstream}"
+				ln -sf "armbian-logo${suffix}" "${upstream}"
+			fi
+		done
+	fi
 
 	# Remove content from motd: Ubuntu header, welcome text and news. We have our own
 	rm -f "${destination}"/etc/update-motd.d/00-header

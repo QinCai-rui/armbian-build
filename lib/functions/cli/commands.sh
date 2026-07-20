@@ -21,6 +21,10 @@ function armbian_register_commands() {
 
 		["requirements"]="requirements" # implemented in cli_requirements_pre_run and cli_requirements_run
 
+		# List the extension hook points available in the build framework, by statically scanning the sources.
+		["show-extensions"]="show_extensions" # implemented in cli_show_extensions_pre_run and cli_show_extensions_run
+		["show-hooks"]="show_extensions"      # implemented in cli_show_extensions_pre_run and cli_show_extensions_run
+
 		# Given a board/config/exts, dump out the (non-userspace) JSON of configuration
 		["configdump"]="config_dump_json"          # implemented in cli_config_dump_json_pre_run and cli_config_dump_json_run
 		["config-dump"]="config_dump_json"         # implemented in cli_config_dump_json_pre_run and cli_config_dump_json_run
@@ -90,8 +94,6 @@ function armbian_register_commands() {
 
 		["armbian-base-files"]="artifact"
 		["armbian-bsp-cli"]="artifact"
-		["armbian-bsp-desktop"]="artifact"
-		["armbian-desktop"]="artifact"
 
 		["undecided"]="undecided" # implemented in cli_undecided_pre_run and cli_undecided_run - relaunches either build or docker
 	)
@@ -151,8 +153,6 @@ function armbian_register_commands() {
 
 		["armbian-base-files"]="WHAT='armbian-base-files' ${common_cli_artifact_vars}"
 		["armbian-bsp-cli"]="WHAT='armbian-bsp-cli' ${common_cli_artifact_vars}"
-		["armbian-bsp-desktop"]="WHAT='armbian-bsp-desktop' BUILD_DESKTOP='yes' ${common_cli_artifact_vars}"
-		["armbian-desktop"]="WHAT='armbian-desktop' BUILD_DESKTOP='yes' ${common_cli_artifact_vars}"
 
 		["oras-upload"]="ORAS_OPERATION='upload'"
 

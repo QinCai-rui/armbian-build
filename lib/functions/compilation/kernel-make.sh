@@ -31,7 +31,7 @@ function run_kernel_make_internal() {
 
 	# If CCACHE_DIR is set, pass it to the kernel build; Pass the ccache dir explicitly, since we'll run under "env -i"
 	if [[ -n "${CCACHE_DIR}" ]]; then
-		common_make_envs+=("CCACHE_DIR='${CCACHE_DIR}'")
+		common_make_envs+=("CCACHE_DIR=${CCACHE_DIR@Q}")
 	fi
 
 	# Add the distcc envs, if any.
@@ -74,7 +74,19 @@ function run_kernel_make_internal() {
 		common_make_params_quoted+=("${llvm_flag}")
 	fi
 
-	# Allow extensions to modify make parameters and environment variables
+	# Hook order: kernel_make_config runs first (generic extension config),
+	# then custom_kernel_make_params (user/board overrides can take precedence).
+	call_extension_method "kernel_make_config" <<- 'KERNEL_MAKE_CONFIG'
+		*Hook to customize kernel make environment and parameters*
+		Called right before invoking make for kernel compilation.
+		Available arrays to modify:
+		  - common_make_envs[@]: environment variables passed via "env -i" (e.g., CCACHE_REMOTE_STORAGE)
+		  - common_make_params_quoted[@]: make command parameters (e.g., custom flags)
+		Available read-only variables:
+		  - KERNEL_COMPILER, ARCHITECTURE, BRANCH, LINUXFAMILY
+	KERNEL_MAKE_CONFIG
+
+	# Runs after kernel_make_config — allows user/board overrides to take precedence
 	call_extension_method "custom_kernel_make_params" <<- 'CUSTOM_KERNEL_MAKE_PARAMS'
 		*Customize kernel make parameters before compilation*
 		Called after all standard make parameters are set but before invoking make.
@@ -99,8 +111,10 @@ function run_kernel_make_dialog() {
 
 function run_kernel_make_long_running() {
 	local seconds_start=${SECONDS} # Bash has a builtin SECONDS that is seconds since start of script
-	KERNEL_MAKE_UNBUFFER="unbuffer" run_kernel_make_internal "$@"
+	local command_result=0
+	KERNEL_MAKE_UNBUFFER="unbuffer" run_kernel_make_internal "$@" || command_result=$?
 	display_alert "Kernel Make '$*' took" "$((SECONDS - seconds_start)) seconds" "debug"
+	return ${command_result}
 }
 
 function kernel_determine_toolchain() {
@@ -117,6 +131,16 @@ function kernel_determine_toolchain() {
 	else
 		kernel_compiler_full="${KERNEL_COMPILER}gcc"
 	fi
+
+	# Fail fast with a readable message if the (cross-)compiler is missing, instead of
+	# letting the '-dumpversion' invocation below die with a cryptic
+	# "env: '${kernel_compiler_full}': No such file or directory" (Error 127). The common
+	# case is cross-building a target whose toolchain is unavailable on this host - e.g. an
+	# arm64 target on a riscv64 host, where gcc-aarch64-linux-gnu is not in the repositories.
+	if ! eval command -v "${kernel_compiler_full}" > /dev/null 2>&1; then
+		exit_with_error "Kernel compiler '${kernel_compiler_full}' not found for target ${ARCH} on host $(dpkg --print-architecture); its cross-toolchain is likely unavailable for this host architecture. Build on a supported host, use a Docker build, or install the toolchain."
+	fi
+
 	kernel_compiler_version="$(eval env "${kernel_compiler_full}" -dumpfullversion -dumpversion)"
 	display_alert "Compiler version" "${kernel_compiler_full} ${kernel_compiler_version}" "info"
 }

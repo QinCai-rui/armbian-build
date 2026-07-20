@@ -10,7 +10,15 @@ declare -g SERIALCON="${SERIALCON:-tty1}"            # Consistent serial console
 declare -g UEFI_GRUB_TIMEOUT=${UEFI_GRUB_TIMEOUT:-3} # Default 3-seconds timeout for GRUB menu.
 declare -g BOARD_FIRMWARE_INSTALL="-full"            # Install full firmware for UEFI boards
 declare -g DISTRO_GENERIC_KERNEL=no
-declare -g POWER_MANAGEMENT_FEATURES=yes             # Suspend and resume might work well in UEFI, elsewhere is disabled by default
+declare -g POWER_MANAGEMENT_FEATURES=yes # Suspend and resume might work well in UEFI, elsewhere is disabled by default
+
+# Intel SOF (Sound Open Firmware) DSP blobs for Meteor / Lunar / Panther
+# Lake and friends. Most UEFI x86 laptops route audio through SOF — without
+# the firmware the kernel SOF driver probes, fails to load sof-*.ri, and the
+# analog/speaker path stays silent (HDMI still works). Architecture: all
+# package, so adding it for arm64 UEFI is cheap (~7 MB of unused blobs) and
+# avoids a per-family branch here.
+add_packages_to_image firmware-sof-signed
 
 case "${BRANCH}" in
 
@@ -42,7 +50,11 @@ case "${BRANCH}" in
 		;;
 
 	edge)
-		declare -g KERNEL_MAJOR_MINOR="6.19"
+		declare -g KERNEL_MAJOR_MINOR="7.1"
+		;;
+
+	bleedingedge)
+		declare -g KERNEL_MAJOR_MINOR="7.2"
 		;;
 esac
 

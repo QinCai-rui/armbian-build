@@ -4,6 +4,7 @@ BOARD_VENDOR="mixtile"
 BOARDFAMILY="rk35xx"
 BOOTCONFIG="mixtile-edge2-rk3568_defconfig"
 BOARD_MAINTAINER=""
+INTRODUCED="2024"
 BOOT_SOC="rk3568"
 KERNEL_TARGET="current,edge,vendor"
 BOOT_FDT_FILE="rockchip/rk3568-mixtile-edge2.dtb"
@@ -23,8 +24,8 @@ function post_family_config__h96_max_use_mainline_uboot() {
 
 	declare -g BOOTCONFIG="generic-rk3568_defconfig"
 	declare -g BOOTSOURCE="https://github.com/u-boot/u-boot.git"
-	declare -g BOOTBRANCH="tag:v2024.07"
-	declare -g BOOTPATCHDIR="v2024.07/board_${BOARD}"
+	declare -g BOOTBRANCH="tag:v2026.07"
+	declare -g BOOTPATCHDIR="v2026.07/board_${BOARD}"
 	declare -g BOOTDIR="u-boot-${BOARD}" # do not share u-boot directory
 
 	declare -g UBOOT_TARGET_MAP="BL31=${RKBIN_DIR}/${BL31_BLOB} ROCKCHIP_TPL=${RKBIN_DIR}/${DDR_BLOB};;u-boot-rockchip.bin"

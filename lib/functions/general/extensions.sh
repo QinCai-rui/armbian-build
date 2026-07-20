@@ -141,7 +141,8 @@ function initialize_extension_manager() {
 	# before starting, auto-add extensions specified (eg, on the command-line) via the ENABLE_EXTENSIONS or EXT env var. Do it only once.
 	[[ ${initialize_extension_manager_counter} -lt 1 ]] && [[ "${ENABLE_EXTENSIONS:-"${EXT}"}" != "" ]] && {
 		local auto_extension
-		for auto_extension in $(echo "${ENABLE_EXTENSIONS:-"${EXT}"}" | tr "," " "); do
+		local _enable_csv="${ENABLE_EXTENSIONS:-"${EXT}"}"
+		for auto_extension in ${_enable_csv//,/ }; do
 			ENABLE_EXTENSION_TRACE_HINT="ENABLE_EXTENSIONS/EXT -> " enable_extension "${auto_extension}"
 		done
 	}
@@ -590,7 +591,7 @@ function enable_extensions_with_hostdeps_builtin_and_user() {
 		display_alert "Extension search" "Searching in directory: \"${ext_dir}\"" ""
 		if [[ -d "${ext_dir}" ]]; then
 			declare -a ext_list_dir=()
-			mapfile -t ext_list_dir < <(find "${ext_dir}" -maxdepth 2 -type f -name "*.sh" -print0 | xargs -0 -r grep -l "${grep_args[@]}" 2>/dev/null || true)
+			mapfile -t ext_list_dir < <(find "${ext_dir}" -maxdepth 2 -type f -name "*.sh" -print0 | xargs -0 -r grep -l "${grep_args[@]}" 2> /dev/null || true)
 			display_alert "Extension search result" "Found ${#ext_list_dir[@]} extensions in \"${ext_dir}\"" ""
 			extension_list+=("${ext_list_dir[@]}")
 		else
