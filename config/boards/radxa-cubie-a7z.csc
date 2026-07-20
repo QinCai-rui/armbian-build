@@ -1,5 +1,5 @@
 # Allwinner octa core 2xA76 6xA55 2-16GB LPDDR4 eMMC/UFS/NVMe
-BOARD_NAME="radxa cubie a7z"
+BOARD_NAME="Radxa Cubie A7Z"
 BOARDFAMILY="sun60iw2"
 BOARD_MAINTAINER=""
 KERNEL_TARGET="edge"
