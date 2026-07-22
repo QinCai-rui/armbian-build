@@ -11,6 +11,7 @@ import email.utils
 import logging
 import mailbox
 import os
+import shutil
 import re
 import subprocess
 import tempfile
@@ -807,8 +808,11 @@ def prepare_clean_git_tree_for_patching(repo: git.Repo, revision_sha: str, branc
 	# Let's remove all the untracked, but not ignored, files from the working copy
 	for file in repo.untracked_files:
 		full_name = os.path.join(repo.working_tree_dir, file)
-		log.debug(f"Removing untracked file '{file}'")
-		os.remove(full_name)
+		log.debug(f"Removing untracked '{file}'")
+		if os.path.isdir(full_name):
+			shutil.rmtree(full_name)
+		else:
+			os.remove(full_name)
 
 
 def export_commit_as_patch(repo: git.Repo, commit: str):

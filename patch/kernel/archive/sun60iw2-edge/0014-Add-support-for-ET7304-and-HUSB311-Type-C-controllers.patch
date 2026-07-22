@@ -1,43 +1,28 @@
-From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
-From: Alexey Charkov <alchark@flipper.net>
-Date: Wed, 18 Mar 2026 18:32:53 +0400
-Subject: [PATCH v4 1/4] dt-bindings: vendor-prefixes: Add Hynetek Semiconductor Co., Ltd.
+From f2d95065544dca9aa4810a367dee2356d296cc79 Mon Sep 17 00:00:00 2001
+From: Raymont Qin <git@qincai.xyz>
+Date: Wed, 22 Jul 2026 17:59:18 +1200
+Subject: [PATCH] Add support for Etek ET7304 and Hynetek HUSB311 Type-C
+ controllers
 
-Hynetek Semiconductor Co., Ltd. focuses on intelligent energy control
-technology, mainly for the intelligent fast charging and digital energy
-fields.
-
-Link: https://en.hynetek.com/
-Acked-by: Conor Dooley <conor.dooley@microchip.com>
-Signed-off-by: Alexey Charkov <alchark@flipper.net>
+- Add etekmicro,et7304 and hynetek,husb311 compatible strings
+- Remove VID/PID/DID revision check, use compatible match instead
+- Map et7304 to rt1715, husb311 to rt1711h (rebrands)
+- Update dt-bindings accordingly
 ---
- Documentation/devicetree/bindings/vendor-prefixes.yaml | 2 ++
- 1 file changed, 2 insertions(+)
-
-diff --git a/Documentation/devicetree/bindings/vendor-prefixes.yaml b/Documentation/devicetree/bindings/vendor-prefixes.yaml
-index 5a806faf7170..3ffb1a8e24af 100644
---- a/Documentation/devicetree/bindings/vendor-prefixes.yaml
-+++ b/Documentation/devicetree/bindings/vendor-prefixes.yaml
-@@ -747,6 +747,8 @@ patternProperties:
-     description: Hycon Technology Corp.
-   "^hydis,.*":
-     description: Hydis Technologies
-+  "^hynetek,.*":
-+    description: Hynetek Semiconductor Co., Ltd.
-   "^hynitron,.*":
-     description: Shanghai Hynitron Microelectronics Co. Ltd.
-   "^hynix,.*":
+ .../bindings/usb/richtek,rt1711h.yaml         | 18 ++++++--
+ .../devicetree/bindings/vendor-prefixes.yaml  |  4 ++
+ drivers/usb/typec/tcpm/tcpci_rt1711h.c        | 44 +------------------
+ 3 files changed, 20 insertions(+), 46 deletions(-)
 
 diff --git a/Documentation/devicetree/bindings/usb/richtek,rt1711h.yaml b/Documentation/devicetree/bindings/usb/richtek,rt1711h.yaml
-index 1eb611f35998..210090308e7c 100644
+index ae611f7e5..7ded36384 100644
 --- a/Documentation/devicetree/bindings/usb/richtek,rt1711h.yaml
 +++ b/Documentation/devicetree/bindings/usb/richtek,rt1711h.yaml
-@@ -18,10 +18,14 @@ description: |
+@@ -18,11 +18,21 @@ description: |
  
  properties:
    compatible:
 -    enum:
--      - etekmicro,et7304
 -      - richtek,rt1711h
 -      - richtek,rt1715
 +    oneOf:
@@ -46,63 +31,65 @@ index 1eb611f35998..210090308e7c 100644
 +          - richtek,rt1715
 +      - items:
 +          - enum:
++              - hynetek,husb311
++          - const: richtek,rt1711h
++      - items:
++          - enum:
 +              - etekmicro,et7304
 +          - const: richtek,rt1715
      description:
-       RT1711H support PD20, ET7304 and RT1715 support PD30 except Fast Role Swap.
- 
-
-diff --git a/Documentation/devicetree/bindings/usb/richtek,rt1711h.yaml b/Documentation/devicetree/bindings/usb/richtek,rt1711h.yaml
-index 210090308e7c..7ded36384518 100644
---- a/Documentation/devicetree/bindings/usb/richtek,rt1711h.yaml
-+++ b/Documentation/devicetree/bindings/usb/richtek,rt1711h.yaml
-@@ -22,12 +22,17 @@ properties:
-       - enum:
-           - richtek,rt1711h
-           - richtek,rt1715
-+      - items:
-+          - enum:
-+              - hynetek,husb311
-+          - const: richtek,rt1711h
-       - items:
-           - enum:
-               - etekmicro,et7304
-           - const: richtek,rt1715
-     description:
-       RT1711H support PD20, ET7304 and RT1715 support PD30 except Fast Role Swap.
+-      RT1711H support PD20, RT1715 support PD30 except Fast Role Swap.
++      RT1711H support PD20, ET7304 and RT1715 support PD30 except Fast Role Swap.
 +      HUSB311 is a rebrand of RT1711H which is pin and register compatible.
  
    reg:
      maxItems: 1
-
+diff --git a/Documentation/devicetree/bindings/vendor-prefixes.yaml b/Documentation/devicetree/bindings/vendor-prefixes.yaml
+index f1d188200..93c4369e5 100644
+--- a/Documentation/devicetree/bindings/vendor-prefixes.yaml
++++ b/Documentation/devicetree/bindings/vendor-prefixes.yaml
+@@ -529,6 +529,8 @@ patternProperties:
+     description: ESTeem Wireless Modems
+   "^eswin,.*":
+     description: Beijing ESWIN Technology Group Co. Ltd.
++  "^etekmicro,.*":
++    description: Wuxi ETEK Micro-Electronics Co.,Ltd.
+   "^ettus,.*":
+     description: NI Ettus Research
+   "^eukrea,.*":
+@@ -723,6 +725,8 @@ patternProperties:
+     description: HXT Semiconductor
+   "^hycon,.*":
+     description: Hycon Technology Corp.
++  "^hynetek,.*":
++    description: Hynetek Semiconductor Co., Ltd.
+   "^hydis,.*":
+     description: Hydis Technologies
+   "^hynitron,.*":
 diff --git a/drivers/usb/typec/tcpm/tcpci_rt1711h.c b/drivers/usb/typec/tcpm/tcpci_rt1711h.c
-index 37cf55ad74f8..4b3e4e22a82e 100644
+index cd74cb935..5223cabd4 100644
 --- a/drivers/usb/typec/tcpm/tcpci_rt1711h.c
 +++ b/drivers/usb/typec/tcpm/tcpci_rt1711h.c
-@@ -18,13 +18,6 @@
+@@ -18,10 +18,6 @@
  #include <linux/regmap.h>
  #include <linux/regulator/consumer.h>
  
 -#define RT1711H_VID		0x29CF
--#define ET7304_VID		0x6DCF
 -#define RT1711H_PID		0x1711
 -#define RT1711H_DID		0x2171
 -#define RT1715_DID		0x2173
--#define ET7304_DID		0x2173
--
+ 
  #define RT1711H_PHYCTRL1	0x80
  #define RT1711H_PHYCTRL2	0x81
- 
-@@ -57,8 +50,6 @@
+@@ -55,7 +51,6 @@
  
  struct rt1711h_chip_info {
  	u32 rxdz_sel;
--	u16 vid;
 -	u16 did;
  	bool enable_pd30_extended_message;
  };
  
-@@ -304,35 +295,6 @@ static int rt1711h_sw_reset(struct rt1711h_chip *chip)
+@@ -301,35 +296,6 @@ static int rt1711h_sw_reset(struct rt1711h_chip *chip)
  	return 0;
  }
  
@@ -113,7 +100,7 @@ index 37cf55ad74f8..4b3e4e22a82e 100644
 -	ret = i2c_smbus_read_word_data(i2c, TCPC_VENDOR_ID);
 -	if (ret < 0)
 -		return ret;
--	if (ret != chip->info->vid) {
+-	if (ret != RT1711H_VID) {
 -		dev_err(&i2c->dev, "vid is not correct, 0x%04x\n", ret);
 -		return -ENODEV;
 -	}
@@ -135,10 +122,10 @@ index 37cf55ad74f8..4b3e4e22a82e 100644
 -	return ret;
 -}
 -
+ static void rt1711h_unregister_tcpci_port(void *tcpci);
+ 
  static int rt1711h_probe(struct i2c_client *client)
- {
- 	int ret;
-@@ -349,12 +311,6 @@ static int rt1711h_probe(struct i2c_client *client)
+@@ -348,12 +314,6 @@ static int rt1711h_probe(struct i2c_client *client)
  
  	chip->info = i2c_get_match_data(client);
  
@@ -151,41 +138,32 @@ index 37cf55ad74f8..4b3e4e22a82e 100644
  	chip->data.regmap = devm_regmap_init_i2c(client,
  						 &rt1711h_regmap_config);
  	if (IS_ERR(chip->data.regmap))
-@@ -408,27 +364,16 @@ static void rt1711h_remove(struct i2c_client *client)
- 	tcpci_unregister_port(chip->tcpci);
+@@ -410,16 +370,15 @@ static void rt1711h_unregister_tcpci_port(void *tcpci)
  }
  
--static const struct rt1711h_chip_info et7304 = {
--	.rxdz_sel = RT1711H_BMCIO_RXDZSEL,
--	.vid = ET7304_VID,
--	.did = ET7304_DID,
--	.enable_pd30_extended_message = true,
--};
--
  static const struct rt1711h_chip_info rt1711h = {
--	.vid = RT1711H_VID,
 -	.did = RT1711H_DID,
  };
  
  static const struct rt1711h_chip_info rt1715 = {
  	.rxdz_sel = RT1711H_BMCIO_RXDZSEL,
--	.vid = RT1711H_VID,
 -	.did = RT1715_DID,
  	.enable_pd30_extended_message = true,
  };
  
  static const struct i2c_device_id rt1711h_id[] = {
--	{ "et7304", (kernel_ulong_t)&et7304 },
 +	{ "et7304", (kernel_ulong_t)&rt1715 },
  	{ "rt1711h", (kernel_ulong_t)&rt1711h },
  	{ "rt1715", (kernel_ulong_t)&rt1715 },
  	{}
-@@ -436,7 +381,7 @@ static const struct i2c_device_id rt1711h_id[] = {
+@@ -427,6 +386,7 @@ static const struct i2c_device_id rt1711h_id[] = {
  MODULE_DEVICE_TABLE(i2c, rt1711h_id);
  
  static const struct of_device_id rt1711h_of_match[] = {
--	{ .compatible = "etekmicro,et7304", .data = &et7304 },
 +	{ .compatible = "etekmicro,et7304", .data = &rt1715 },
  	{ .compatible = "richtek,rt1711h", .data = &rt1711h },
  	{ .compatible = "richtek,rt1715", .data = &rt1715 },
  	{}
+-- 
+2.47.3
+
