@@ -1,0 +1,155 @@
+diff --git a/drivers/cpufreq/cpufreq-dt-platdev.c b/drivers/cpufreq/cpufreq-dt-platdev.c
+index 47dd76acd31e..c08a9b446431 100644
+--- a/drivers/cpufreq/cpufreq-dt-platdev.c
++++ b/drivers/cpufreq/cpufreq-dt-platdev.c
+@@ -113,6 +113,12 @@ static const struct of_device_id blocklist[] __initconst = {
+ 	{ .compatible = "allwinner,sun50i-h618", },
+ 	{ .compatible = "allwinner,sun50i-h700", },
+ 
++	{ .compatible = "arm,sun50iw9p1", },
++	{ .compatible = "arm,sun50iw10p1", },
++	{ .compatible = "arm,sun55iw3p1", },
++	{ .compatible = "arm,sun60iw2p1", },
++	{ .compatible = "arm,sun65iw1p1", },
++
+ 	{ .compatible = "apple,arm-platform", },
+ 
+ 	{ .compatible = "arm,vexpress", },
+diff --git a/drivers/cpufreq/cpufreq-dt.c b/drivers/cpufreq/cpufreq-dt.c
+index 7d5079fd1688..320342cbb015 100644
+--- a/drivers/cpufreq/cpufreq-dt.c
++++ b/drivers/cpufreq/cpufreq-dt.c
+@@ -22,6 +22,8 @@
+ #include <linux/slab.h>
+ #include <linux/thermal.h>
+ 
++#include <../drivers/opp/opp.h>
++
+ #include "cpufreq-dt.h"
+ 
+ struct private_data {
+@@ -137,6 +139,106 @@ static void cpufreq_exit(struct cpufreq_policy *policy)
+ 	clk_put(policy->clk);
+ }
+ 
++static int __maybe_unused sunxi_get_power(struct device *dev, unsigned long *uW,
++				     unsigned long *kHz)
++{
++	struct dev_pm_opp *opp, *iter;
++	struct device_node *np;
++	struct opp_table *opp_table;
++	unsigned long mV, Hz;
++	u32 cap;
++	u64 tmp;
++	int ret;
++	int index = 0;
++
++	np = of_node_get(dev->of_node);
++	if (!np)
++		return -EINVAL;
++
++	ret = of_property_read_u32(np, "dynamic-power-coefficient", &cap);
++	of_node_put(np);
++	if (ret)
++		return -EINVAL;
++
++	Hz = *kHz * 1000;
++	opp = dev_pm_opp_find_freq_ceil(dev, &Hz);
++	if (IS_ERR(opp))
++		return -EINVAL;
++
++	mV = dev_pm_opp_get_voltage(opp) / 1000;
++
++	opp_table = opp->opp_table;
++	list_for_each_entry(iter, &opp_table->opp_list, node) {
++		index++;
++		if (iter->rates[0] >= Hz)
++			break;
++	}
++	dev_pm_opp_put(opp);
++	if (!mV)
++		return -EINVAL;
++
++	tmp = (u64)cap * mV * mV * (Hz / 1000000);
++	/* Provide power in micro-Watts */
++	do_div(tmp, 1000000);
++
++	// avoid inefficient opp when several opp is in same voltage
++	*uW = (unsigned long)tmp + ((index * Hz / 1000000) / 4);
++	*kHz = Hz / 1000;
++
++	return 0;
++}
++
++static void sunxi_cpufreq_register_em(struct cpufreq_policy *policy)
++{
++	struct device *dev = get_cpu_device(policy->cpu);
++	struct cpumask *cpus = policy->related_cpus;
++	struct em_data_callback em_cb;
++	struct device_node *np;
++	int ret, nr_opp;
++	u32 cap;
++
++	if (IS_ERR_OR_NULL(dev)) {
++		ret = -EINVAL;
++		goto failed;
++	}
++
++	nr_opp = dev_pm_opp_get_opp_count(dev);
++	if (nr_opp <= 0) {
++		ret = -EINVAL;
++		goto failed;
++	}
++
++	np = of_node_get(dev->of_node);
++	if (!np) {
++		ret = -EINVAL;
++		goto failed;
++	}
++
++	/*
++	 * Register an EM only if the 'dynamic-power-coefficient' property is
++	 * set in devicetree. It is assumed the voltage values are known if that
++	 * property is set since it is useless otherwise. If voltages are not
++	 * known, just let the EM registration fail with an error to alert the
++	 * user about the inconsistent configuration.
++	 */
++	ret = of_property_read_u32(np, "dynamic-power-coefficient", &cap);
++	of_node_put(np);
++	if (ret || !cap) {
++		dev_dbg(dev, "Couldn't find proper 'dynamic-power-coefficient' in DT\n");
++		ret = -EINVAL;
++		goto failed;
++	}
++
++	EM_SET_ACTIVE_POWER_CB(em_cb, sunxi_get_power);
++
++	ret = em_dev_register_perf_domain(dev, nr_opp, &em_cb, cpus, true);
++	if (ret)
++		goto failed;
++
++failed:
++	dev_dbg(dev, "Couldn't register Energy Model %d\n", ret);
++}
++
+ static struct cpufreq_driver dt_cpufreq_driver = {
+ 	.flags = CPUFREQ_NEED_INITIAL_FREQ_CHECK |
+ 		 CPUFREQ_IS_COOLING_DEV,
+@@ -147,7 +249,7 @@ static struct cpufreq_driver dt_cpufreq_driver = {
+ 	.exit = cpufreq_exit,
+ 	.online = cpufreq_online,
+ 	.offline = cpufreq_offline,
+-	.register_em = cpufreq_register_em_with_opp,
++	.register_em = sunxi_cpufreq_register_em,
+ 	.name = "cpufreq-dt",
+ 	.set_boost = cpufreq_boost_set_sw,
+ 	.suspend = cpufreq_generic_suspend,
+@@ -173,7 +275,7 @@ static int dt_cpufreq_early_init(struct device *dev, int cpu)
+ 	if (!priv)
+ 		return -ENOMEM;
+ 
+-	if (!zalloc_cpumask_var(&priv->cpus, GFP_KERNEL))
++	if (!alloc_cpumask_var(&priv->cpus, GFP_KERNEL))
+ 		return -ENOMEM;
+ 
+ 	cpumask_set_cpu(cpu, priv->cpus);
