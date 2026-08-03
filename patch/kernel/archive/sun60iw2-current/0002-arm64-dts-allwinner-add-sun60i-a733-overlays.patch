@@ -57,11 +57,17 @@ diff --git a/arch/arm64/boot/dts/allwinner/Makefile b/arch/arm64/boot/dts/allwin
 index 792e743a8020..99786345d582 100644
 --- a/arch/arm64/boot/dts/allwinner/Makefile
 +++ b/arch/arm64/boot/dts/allwinner/Makefile
-@@ -62,3 +62,4 @@ dtb-$(CONFIG_ARCH_SUNXI) += sun55i-t527-orangepi-4a.dtb
+@@ -62,3 +62,9 @@ dtb-$(CONFIG_ARCH_SUNXI) += sun55i-t527-orangepi-4a.dtb
  dtb-$(CONFIG_ARCH_SUNXI) += sun60i-a733-cubie-a7a.dtb
  dtb-$(CONFIG_ARCH_SUNXI) += sun60i-a733-cubie-a7s.dtb
  dtb-$(CONFIG_ARCH_SUNXI) += sun60i-a733-cubie-a7z.dtb
 +subdir-y += overlay
++
++# Generate the __symbols__ table so u-boot/fdtoverlay can apply the overlays
++# in overlay/ against these base device trees at boot time.
++DTC_FLAGS_sun60i-a733-cubie-a7a += -@
++DTC_FLAGS_sun60i-a733-cubie-a7s += -@
++DTC_FLAGS_sun60i-a733-cubie-a7z += -@
 diff --git a/arch/arm64/boot/dts/allwinner/overlay/Makefile b/arch/arm64/boot/dts/allwinner/overlay/Makefile
 new file mode 100644
 index 000000000000..1adc1aac41b6
