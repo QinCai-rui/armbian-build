@@ -61,6 +61,7 @@ dtb-$(CONFIG_ARCH_SUNXI) += \
 	sun50i-h616-bananapi-m4-spi1-cs0-cs1-spidev.dtbo \
 	sun50i-h616-bananapi-m4-spi1-cs0-spidev.dtbo \
 	sun50i-h616-bananapi-m4-spi1-cs1-spidev.dtbo \
+	sun50i-h616-bananapi-m4-zero-fpc24-eth.dtbo \
 	sun50i-h616-gpu.dtbo \
 	sun50i-h616-i2c0-pi.dtbo \
 	sun50i-h616-i2c1-pi.dtbo \
@@ -98,6 +99,8 @@ dtb-$(CONFIG_ARCH_SUNXI) += \
 	sun50i-h616-ir.dtbo \
 	sun50i-h616-tft35_spi.dtbo \
 	sun50i-h616-mcp2515.dtbo \
+	sun50i-h616-walnutpi-box-oled.dtbo \
+	sun50i-h616-walnutpi-zerow-expansion.dtbo \
 	sun50i-h616-ws2812.dtbo \
 	sun50i-h616-light.dtbo
 
