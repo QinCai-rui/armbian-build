@@ -1,0 +1,155 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: QinCai-rui <git@qincai.xyz>
+Date: Mon, 26 Oct 2026 06:00:00 +0000
+Subject: [PATCH] PCI: sunxi: negotiate speed only after establishing the link
+
+Do not request a directed speed change during root-port setup.
+Clear stale requests, wait for completion after link establishment,
+and report the negotiated speed rather than the requested target.
+Use the negotiated speed for the interconnect bandwidth limit.
+
+---
+diff --git a/bsp/drivers/pcie/pcie-sunxi-plat.c b/bsp/drivers/pcie/pcie-sunxi-plat.c
+--- a/bsp/drivers/pcie/pcie-sunxi-plat.c
++++ b/bsp/drivers/pcie/pcie-sunxi-plat.c
+@@ -221,6 +221,8 @@
+ 
+ 	u8 offset = sunxi_pcie_plat_find_capability(pci, PCI_CAP_ID_EXP);
+ 
++	pci->pcie_cap = offset;
++	sunxi_pcie_dbi_ro_wr_en(pci);
+ 	cap = sunxi_pcie_readl_dbi(pci, offset + PCI_EXP_LNKCAP);
+ 	ctrl2 = sunxi_pcie_readl_dbi(pci, offset + PCI_EXP_LNKCTL2);
+ 	ctrl2 &= ~PCI_EXP_LNKCTL2_TLS;
+@@ -249,6 +251,7 @@
+ 
+ 	cap &= ~((u32)PCI_EXP_LNKCAP_SLS);
+ 	sunxi_pcie_writel_dbi(pci, offset + PCI_EXP_LNKCAP, cap | link_speed);
++	sunxi_pcie_dbi_ro_wr_dis(pci);
+ }
+ 
+ void sunxi_pcie_plat_set_rate(struct sunxi_pcie *pci)
+diff --git a/bsp/drivers/pcie/pcie-sunxi-rc.c b/bsp/drivers/pcie/pcie-sunxi-rc.c
+--- a/bsp/drivers/pcie/pcie-sunxi-rc.c
++++ b/bsp/drivers/pcie/pcie-sunxi-rc.c
+@@ -595,8 +595,9 @@
+ 
+ 	sunxi_pcie_dbi_ro_wr_dis(pci);
+ 
++	/* Request a speed change only after the initial data link is established. */
+ 	sunxi_pcie_host_rd_own_conf(pp, PCIE_LINK_WIDTH_SPEED_CONTROL, 4, &val);
+-	val |= PORT_LOGIC_SPEED_CHANGE;
++	val &= ~PORT_LOGIC_SPEED_CHANGE;
+ 	sunxi_pcie_host_wr_own_conf(pp, PCIE_LINK_WIDTH_SPEED_CONTROL, 4, val);
+ }
+ EXPORT_SYMBOL_GPL(sunxi_pcie_host_setup_rc);
+@@ -606,11 +607,11 @@
+ 	u32 tmp;
+ 	unsigned int retries;
+ 
+-	for (retries = 0; retries < LINK_WAIT_MAX_RETRIE; retries++) {
++	for (retries = 0; retries < 1000; retries++) {
+ 		tmp = sunxi_pcie_readl_dbi(pci, PCIE_LINK_WIDTH_SPEED_CONTROL);
+ 		if (!(tmp & PORT_LOGIC_SPEED_CHANGE))
+ 			return 0;
+-		usleep_range(SPEED_CHANGE_USLEEP_MIN, SPEED_CHANGE_USLEEP_MAX);
++		usleep_range(1000, 2000);
+ 	}
+ 
+ 	sunxi_err(pci->dev, "Speed change timeout\n");
+@@ -646,23 +647,35 @@
+ 
+ static int sunxi_pcie_host_read_speed(struct sunxi_pcie *pci)
+ {
+-	int val, gen;
+-
+-	sunxi_pcie_dbi_ro_wr_en(pci);
+-	val = sunxi_pcie_readl_dbi(pci, LINK_CONTROL2_LINK_STATUS2);
+-	gen = val & 0xf;
+-
+-	sunxi_info(pci->dev, "PCIe speed of Gen%d\n", gen);
++	u16 status;
++	int gen;
++
++	status = sunxi_pcie_readw_dbi(pci, pci->pcie_cap + PCI_EXP_LNKSTA);
++	gen = status & PCI_EXP_LNKSTA_CLS;
++	if (gen < 1 || gen > 3) {
++		dev_warn(pci->dev, "invalid negotiated PCIe link status %#x\n", status);
++		return -EIO;
++	}
++
++	sunxi_info(pci->dev, "PCIe link up: Gen%d x%u\n", gen,
++		   (status & PCI_EXP_LNKSTA_NLW) >> 4);
+ 	sunxi_pcie_host_change_nsi_port_bwl(pci, gen);
+ 
+-	sunxi_pcie_dbi_ro_wr_dis(pci);
+-	return 0;
++	return gen;
+ }
+ 
+ int sunxi_pcie_host_speed_change(struct sunxi_pcie *pci, int gen)
+ {
+ 	int val;
+ 	int ret;
++
++	if (!sunxi_pcie_host_is_link_up(&pci->pp))
++		return -ENOLINK;
++
++	if (gen == 1) {
++		ret = sunxi_pcie_host_read_speed(pci);
++		return ret < 0 ? ret : 0;
++	}
+ 
+ 	sunxi_pcie_dbi_ro_wr_en(pci);
+ 	val = sunxi_pcie_readl_dbi(pci, LINK_CONTROL2_LINK_STATUS2);
+@@ -679,15 +692,23 @@
+ 	sunxi_pcie_writel_dbi(pci, PCIE_LINK_WIDTH_SPEED_CONTROL, val);
+ 
+ 	ret = sunxi_pcie_host_wait_for_speed_change(pci);
+-	if (!ret) {
+-		sunxi_info(pci->dev, "PCIe speed of Gen%d\n", gen);
+-		sunxi_pcie_host_change_nsi_port_bwl(pci, gen);
+-	}
+-	else
+-		sunxi_info(pci->dev, "PCIe speed of Gen1\n");
++	if (ret) {
++		val = sunxi_pcie_readl_dbi(pci, PCIE_LINK_WIDTH_SPEED_CONTROL);
++		val &= ~PORT_LOGIC_SPEED_CHANGE;
++		sunxi_pcie_writel_dbi(pci, PCIE_LINK_WIDTH_SPEED_CONTROL, val);
++	}
+ 
+ 	sunxi_pcie_dbi_ro_wr_dis(pci);
+-	return 0;
++	if (sunxi_pcie_host_is_link_up(&pci->pp))
++		sunxi_pcie_host_read_speed(pci);
++	else {
++		dev_warn(pci->dev, "PCIe link lost during speed change: LTSSM=%#x link=%#x\n",
++			 sunxi_pcie_readl_dbi(pci, PCIE_PORT_DEBUG0) & PCIE_LTSSM_STATE_MASK,
++			 sunxi_pcie_readl(pci, PCIE_LINK_STAT));
++		if (!ret)
++			ret = -ENOLINK;
++	}
++	return ret;
+ }
+ 
+ static void __sunxi_pcie_host_init(struct sunxi_pcie_port *pp)
+diff --git a/bsp/drivers/pcie/pcie-sunxi.h b/bsp/drivers/pcie/pcie-sunxi.h
+--- a/bsp/drivers/pcie/pcie-sunxi.h
++++ b/bsp/drivers/pcie/pcie-sunxi.h
+@@ -162,6 +162,8 @@
+ #define PCIE_LINK_WIDTH_SPEED_CONTROL	0x80C
+ #define PORT_LOGIC_SPEED_CHANGE		(0x1 << 17)
+ #define LINK_CONTROL2_LINK_STATUS2	0xa0
++#define PCIE_PORT_DEBUG0			0x728
++#define PCIE_LTSSM_STATE_MASK		GENMASK(5, 0)
+ /* Parameters for the waiting for link up routine */
+ #define LINK_WAIT_MAX_RETRIE		20
+ #define LINK_WAIT_USLEEP_MIN		90000
+@@ -331,6 +333,7 @@
+ 	struct gpio_desc	*wake_gpio;
+ 	struct gpio_desc	*power_gpio;
+ 	u32			reset_deassert_ms;
++	u8			pcie_cap;
+ 	u32			lanes;
+ 	u32			num_edma;
+ 	unsigned long		*rd_edma_map;

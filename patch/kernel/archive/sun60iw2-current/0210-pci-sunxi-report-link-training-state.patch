@@ -1,0 +1,71 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: QinCai-rui <git@qincai.xyz>
+Date: Mon, 26 Oct 2026 06:00:00 +0000
+Subject: [PATCH] PCI: sunxi: report link-training state on timeout
+
+Sample LTSSM states during a bounded link wait and include the
+controller and GPIO state in timeout diagnostics. Distinguish this
+diagnostic build with a driver version suffix.
+
+---
+diff --git a/bsp/drivers/pcie/pcie-sunxi-plat.c b/bsp/drivers/pcie/pcie-sunxi-plat.c
+--- a/bsp/drivers/pcie/pcie-sunxi-plat.c
++++ b/bsp/drivers/pcie/pcie-sunxi-plat.c
+@@ -38,7 +38,7 @@
+ #include "pcie-sunxi-dma.h"
+ #include "pcie-sunxi.h"
+ 
+-#define SUNXI_PCIE_MODULE_VERSION	"1.2.5"
++#define SUNXI_PCIE_MODULE_VERSION	"1.2.5-pcie-reset1"
+ 
+ void sunxi_pcie_writel(u32 val, struct sunxi_pcie *pcie, u32 offset)
+ {
+diff --git a/bsp/drivers/pcie/pcie-sunxi-rc.c b/bsp/drivers/pcie/pcie-sunxi-rc.c
+--- a/bsp/drivers/pcie/pcie-sunxi-rc.c
++++ b/bsp/drivers/pcie/pcie-sunxi-rc.c
+@@ -25,6 +25,7 @@
+ #include <linux/irqchip/irq-msi-lib.h>
+ #include <linux/irqdomain.h>
+ #include <linux/kernel.h>
++#include <linux/jiffies.h>
+ #include <linux/module.h>
+ #include <linux/msi.h>
+ #include <linux/of_address.h>
+@@ -751,16 +752,30 @@
+ 
+ static int sunxi_pcie_host_wait_for_link(struct sunxi_pcie_port *pp)
+ {
+-	int retries;
+-
+-	for (retries = 0; retries < LINK_WAIT_MAX_RETRIE; retries++) {
++	struct sunxi_pcie *pci = to_sunxi_pcie_from_pp(pp);
++	unsigned long timeout = jiffies + msecs_to_jiffies(5000);
++	u64 states_seen = 0;
++	u32 state;
++
++	do {
++		state = sunxi_pcie_readl_dbi(pci, PCIE_PORT_DEBUG0) & PCIE_LTSSM_STATE_MASK;
++		states_seen |= BIT_ULL(state);
+ 		if (sunxi_pcie_host_is_link_up(pp)) {
+-			sunxi_info(pp->dev, "pcie link up success\n");
++			sunxi_info(pp->dev, "pcie link up success, LTSSM states seen %#llx\n",
++				   (unsigned long long)states_seen);
+ 			return 0;
+ 		}
+-		usleep_range(LINK_WAIT_USLEEP_MIN, LINK_WAIT_USLEEP_MAX);
+-	}
+-
++		msleep(20);
++	} while (time_before(jiffies, timeout));
++
++	dev_warn(pp->dev,
++		 "PCIe link down after 5s: LTSSM=%#x states=%#llx link=%#x control=%#x power=%d reset=%d wake=%d\n",
++		 state, (unsigned long long)states_seen,
++		 sunxi_pcie_readl(pci, PCIE_LINK_STAT),
++		 sunxi_pcie_readl(pci, PCIE_LTSSM_CTRL),
++		 pci->power_gpio ? gpiod_get_value_cansleep(pci->power_gpio) : -1,
++		 pci->rst_gpio ? gpiod_get_raw_value_cansleep(pci->rst_gpio) : -1,
++		 pci->wake_gpio ? gpiod_get_raw_value_cansleep(pci->wake_gpio) : -1);
+ 	return -ETIMEDOUT;
+ }
+ 

@@ -1,0 +1,272 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: QinCai-rui <git@qincai.xyz>
+Date: Mon, 26 Oct 2026 06:00:00 +0000
+Subject: [PATCH] PCI: sunxi: sequence adapter power and endpoint reset
+
+Acquire resources before changing reset state, control the optional
+adapter power GPIO, and hold physical PERST low through supply and
+PHY initialization. Delay training after releasing reset and unwind
+only resources successfully enabled when initialization fails.
+
+---
+diff --git a/bsp/drivers/pcie/pcie-sunxi-plat.c b/bsp/drivers/pcie/pcie-sunxi-plat.c
+--- a/bsp/drivers/pcie/pcie-sunxi-plat.c
++++ b/bsp/drivers/pcie/pcie-sunxi-plat.c
+@@ -418,35 +418,59 @@
+ 	struct device *dev = pci->dev;
+ 	int ret = 0;
+ 
+-	if (!IS_ERR(pci->pcie3v3)) {
++	if (pci->pcie3v3) {
+ 		ret = regulator_set_voltage(pci->pcie3v3, 3300000, 3300000);
+ 		if (ret)
+-			sunxi_warn(dev, "failed to set regulator voltage\n");
++			return dev_err_probe(dev, ret, "failed to set PCIe 3.3V\n");
+ 
+ 		ret = regulator_enable(pci->pcie3v3);
+ 		if (ret)
+-			sunxi_err(dev, "failed to enable pcie3v3 regulator\n");
+-	}
+-
+-	if (!IS_ERR(pci->pcie1v8)) {
++			return dev_err_probe(dev, ret, "failed to enable PCIe 3.3V\n");
++	}
++
++	if (pci->pcie1v8) {
+ 		ret = regulator_set_voltage(pci->pcie1v8, 1800000, 1800000);
+ 		if (ret)
+-			sunxi_warn(dev, "failed to set regulator voltage\n");
++			goto err_3v3;
+ 
+ 		ret = regulator_enable(pci->pcie1v8);
+ 		if (ret)
+-			sunxi_err(dev, "failed to enable pcie1v8 regulator\n");
+-	}
+-
++			goto err_3v3;
++	}
++
++	if (pci->power_gpio) {
++		ret = gpiod_direction_output(pci->power_gpio, 1);
++		if (ret)
++			goto err_1v8;
++	}
++
++	/* Keep PERST# asserted while the adapter supply and PHY become stable. */
++	if (pci->drvdata->mode == SUNXI_PCIE_RC_TYPE)
++		msleep(100);
++
++	return 0;
++
++err_1v8:
++	if (pci->pcie1v8)
++		regulator_disable(pci->pcie1v8);
++err_3v3:
++	if (pci->pcie3v3)
++		regulator_disable(pci->pcie3v3);
++	dev_err_probe(dev, ret, "failed to power PCIe adapter\n");
+ 	return ret;
+ }
+ 
+ static void sunxi_pcie_plat_power_off(struct sunxi_pcie *pci)
+ {
+-	if (!IS_ERR(pci->pcie3v3))
++	if (pci->drvdata->mode == SUNXI_PCIE_RC_TYPE && pci->rst_gpio &&
++	    gpiod_set_raw_value_cansleep(pci->rst_gpio, 0))
++		dev_warn(pci->dev, "failed to assert PERST# during power-off\n");
++	if (pci->power_gpio && gpiod_set_value_cansleep(pci->power_gpio, 0))
++		dev_warn(pci->dev, "failed to disable PCIe adapter power\n");
++	if (pci->pcie1v8)
++		regulator_disable(pci->pcie1v8);
++	if (pci->pcie3v3)
+ 		regulator_disable(pci->pcie3v3);
+-	if (!IS_ERR(pci->pcie1v8))
+-		regulator_disable(pci->pcie1v8);
+ }
+ 
+ static int sunxi_pcie_plat_clk_setup(struct sunxi_pcie *pci)
+@@ -978,12 +1002,10 @@
+ 		pci->link_gen = 0x1;
+ 	}
+ 
+-	pci->rst_gpio = devm_gpiod_get(&pdev->dev, "reset", GPIOD_OUT_HIGH);
++	pci->rst_gpio = devm_gpiod_get_optional(&pdev->dev, "reset", GPIOD_ASIS);
+ 	if (IS_ERR(pci->rst_gpio))
+-		sunxi_warn(&pdev->dev, "Failed to get \"reset-gpios\"\n");
+-	else
+-		gpiod_direction_output(pci->rst_gpio, 1);
+-
++		return dev_err_probe(&pdev->dev, PTR_ERR(pci->rst_gpio),
++				     "failed to get reset GPIO\n");
+ 	/* WAKE# is driven by the endpoint; the root complex must not drive it. */
+ 	pci->wake_gpio = devm_gpiod_get_optional(&pdev->dev, "wake",
+ 		pci->drvdata->mode == SUNXI_PCIE_RC_TYPE ? GPIOD_IN : GPIOD_OUT_HIGH);
+@@ -991,14 +1013,35 @@
+ 		return dev_err_probe(&pdev->dev, PTR_ERR(pci->wake_gpio),
+ 				     "failed to get wake GPIO\n");
+ 
++	if (pci->drvdata->mode == SUNXI_PCIE_RC_TYPE) {
++		/* Preserve a bootloader-enabled supply until power_on owns it. */
++		pci->power_gpio = devm_gpiod_get_optional(&pdev->dev, "power", GPIOD_ASIS);
++		if (IS_ERR(pci->power_gpio))
++			return dev_err_probe(&pdev->dev, PTR_ERR(pci->power_gpio),
++					     "failed to get power GPIO\n");
++	}
++
++	pci->reset_deassert_ms = 100;
++	of_property_read_u32(np, "reset-deassert-ms", &pci->reset_deassert_ms);
++	if (pci->reset_deassert_ms < 100 || pci->reset_deassert_ms > 5000)
++		return dev_err_probe(&pdev->dev, -EINVAL,
++				     "reset-deassert-ms must be between 100 and 5000\n");
+ 
+ 	pci->pcie3v3 = devm_regulator_get_optional(&pdev->dev, "pcie3v3");
+-	if (IS_ERR(pci->pcie3v3))
+-		sunxi_warn(&pdev->dev, "no pcie3v3 regulator found\n");
++	if (IS_ERR(pci->pcie3v3)) {
++		ret = PTR_ERR(pci->pcie3v3);
++		if (ret != -ENODEV)
++			return dev_err_probe(&pdev->dev, ret, "failed to get PCIe 3.3V\n");
++		pci->pcie3v3 = NULL;
++	}
+ 
+ 	pci->pcie1v8 = devm_regulator_get_optional(&pdev->dev, "pcie1v8");
+-	if (IS_ERR(pci->pcie1v8))
+-		sunxi_warn(&pdev->dev, "no pcie1v8 regulator found\n");
++	if (IS_ERR(pci->pcie1v8)) {
++		ret = PTR_ERR(pci->pcie1v8);
++		if (ret != -ENODEV)
++			return dev_err_probe(&pdev->dev, ret, "failed to get PCIe 1.8V\n");
++		pci->pcie1v8 = NULL;
++	}
+ 
+ 	ret = of_property_read_u32(np, "num-lanes", &pci->lanes);
+ 	if (ret) {
+@@ -1024,6 +1067,16 @@
+ static int sunxi_pcie_plat_hw_init(struct sunxi_pcie *pci)
+ {
+ 	int ret;
++
++	/* Resolve every resource before changing the bootloader's reset state. */
++	if (pci->rst_gpio) {
++		if (pci->drvdata->mode == SUNXI_PCIE_RC_TYPE)
++			ret = gpiod_direction_output_raw(pci->rst_gpio, 0);
++		else
++			ret = gpiod_direction_output(pci->rst_gpio, 1);
++		if (ret)
++			return dev_err_probe(pci->dev, ret, "failed to configure reset GPIO\n");
++	}
+ 
+ 	ret = sunxi_pcie_plat_power_on(pci);
+ 	if (ret)
+@@ -1190,7 +1243,7 @@
+ 
+ 	ret = sunxi_pcie_plat_hw_init(pci);
+ 	if (ret)
+-		return -EINVAL;
++		return ret;
+ 
+ 	/* TODO */
+ 	usleep_range(100, 300);
+@@ -1206,8 +1259,12 @@
+ 			sunxi_pcie_host_wr_own_conf(pp, PCIE_MSI_ADDR_HI, 4, upper_32_bits(pa));
+ 		}
+ 
+-		sunxi_pcie_host_establish_link(pci);
+-		sunxi_pcie_host_speed_change(pci, pci->link_gen);
++		ret = sunxi_pcie_host_establish_link(pci);
++		if (!ret) {
++			ret = sunxi_pcie_host_speed_change(pci, pci->link_gen);
++			if (ret)
++				dev_warn(dev, "PCIe speed negotiation failed on resume: %d\n", ret);
++		}
+ 		break;
+ 	case SUNXI_PCIE_EP_TYPE:
+ 		/* TODO */
+diff --git a/bsp/drivers/pcie/pcie-sunxi-rc.c b/bsp/drivers/pcie/pcie-sunxi-rc.c
+--- a/bsp/drivers/pcie/pcie-sunxi-rc.c
++++ b/bsp/drivers/pcie/pcie-sunxi-rc.c
+@@ -693,29 +693,18 @@
+ static void __sunxi_pcie_host_init(struct sunxi_pcie_port *pp)
+ {
+ 	struct sunxi_pcie *pci = to_sunxi_pcie_from_pp(pp);
+-
+-	if (!sunxi_pcie_host_is_link_up(pp)) {
+-		sunxi_pcie_plat_ltssm_disable(pci);
+-		if (!IS_ERR(pci->rst_gpio)) {
+-			gpiod_set_raw_value(pci->rst_gpio, 0);
+-			msleep(100);
+-			gpiod_set_raw_value(pci->rst_gpio, 1);
+-		}
+-	} else {
+-		msleep(100);
+-	}
+-
++	int ret;
++
++	sunxi_pcie_plat_ltssm_disable(pci);
+ 	sunxi_pcie_host_setup_rc(pp);
+ 
+-	if (sunxi_pcie_host_is_link_up(pp)) {
+-		sunxi_info(pci->dev, "pcie is already link up\n");
+-
+-		sunxi_pcie_host_read_speed(pci);
+-	} else {
+-		sunxi_pcie_host_establish_link(pci);
+-
+-		sunxi_pcie_host_speed_change(pci, pci->link_gen);
+-	}
++	ret = sunxi_pcie_host_establish_link(pci);
++	if (ret)
++		return;
++
++	ret = sunxi_pcie_host_speed_change(pci, pci->link_gen);
++	if (ret)
++		dev_warn(pci->dev, "PCIe speed negotiation failed: %d\n", ret);
+ }
+ 
+ static bool sunxi_pcie_host_link_up_status(struct sunxi_pcie_port *pp)
+@@ -757,12 +746,32 @@
+ int sunxi_pcie_host_establish_link(struct sunxi_pcie *pci)
+ {
+ 	struct sunxi_pcie_port *pp = &pci->pp;
++	int ret;
+ 
+ 	if (sunxi_pcie_host_is_link_up(pp)) {
+ 		sunxi_info(pci->dev, "pcie is already link up\n");
+ 		return 0;
+ 	}
+ 
++	sunxi_pcie_plat_ltssm_disable(pci);
++	if (pci->rst_gpio) {
++		ret = gpiod_set_raw_value_cansleep(pci->rst_gpio, 0);
++		if (ret)
++			return dev_err_probe(pci->dev, ret, "failed to assert PERST#\n");
++	}
++	/* The PHY is initialized and REFCLK is running before PERST# is released. */
++	msleep(100);
++	if (pci->rst_gpio) {
++		ret = gpiod_set_raw_value_cansleep(pci->rst_gpio, 1);
++		if (ret)
++			return dev_err_probe(pci->dev, ret, "failed to release PERST#\n");
++	}
++	msleep(pci->reset_deassert_ms);
++	sunxi_info(pci->dev, "training PCIe Gen%d with power=%d, PERST#=%d, delay=%u ms\n",
++		   pci->link_gen,
++		   pci->power_gpio ? gpiod_get_value_cansleep(pci->power_gpio) : -1,
++		   pci->rst_gpio ? gpiod_get_raw_value_cansleep(pci->rst_gpio) : -1,
++		   pci->reset_deassert_ms);
+ 	sunxi_pcie_plat_ltssm_enable(pci);
+ 
+ 	return sunxi_pcie_host_wait_for_link(pp);
+diff --git a/bsp/drivers/pcie/pcie-sunxi.h b/bsp/drivers/pcie/pcie-sunxi.h
+--- a/bsp/drivers/pcie/pcie-sunxi.h
++++ b/bsp/drivers/pcie/pcie-sunxi.h
+@@ -329,6 +329,8 @@
+ 	const struct sunxi_pcie_of_data *drvdata;
+ 	struct gpio_desc	*rst_gpio;
+ 	struct gpio_desc	*wake_gpio;
++	struct gpio_desc	*power_gpio;
++	u32			reset_deassert_ms;
+ 	u32			lanes;
+ 	u32			num_edma;
+ 	unsigned long		*rd_edma_map;

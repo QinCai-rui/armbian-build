@@ -1,0 +1,31 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: QinCai-rui <git@qincai.xyz>
+Date: Mon, 26 Oct 2026 06:00:00 +0000
+Subject: [PATCH] PCI: sunxi: configure root-complex WAKE as an input
+
+WAKE is driven by the endpoint. Do not drive it high from the root
+complex. Preserve the endpoint-mode direction and propagate GPIO
+acquisition errors instead of continuing with an error pointer.
+
+---
+diff --git a/bsp/drivers/pcie/pcie-sunxi-plat.c b/bsp/drivers/pcie/pcie-sunxi-plat.c
+--- a/bsp/drivers/pcie/pcie-sunxi-plat.c
++++ b/bsp/drivers/pcie/pcie-sunxi-plat.c
+@@ -984,11 +984,13 @@
+ 	else
+ 		gpiod_direction_output(pci->rst_gpio, 1);
+ 
+-	pci->wake_gpio = devm_gpiod_get(&pdev->dev, "wake", GPIOD_OUT_HIGH);
++	/* WAKE# is driven by the endpoint; the root complex must not drive it. */
++	pci->wake_gpio = devm_gpiod_get_optional(&pdev->dev, "wake",
++		pci->drvdata->mode == SUNXI_PCIE_RC_TYPE ? GPIOD_IN : GPIOD_OUT_HIGH);
+ 	if (IS_ERR(pci->wake_gpio))
+-		sunxi_warn(&pdev->dev, "Failed to get \"wake-gpios\"\n");
+-	else
+-		gpiod_direction_output(pci->wake_gpio, 1);
++		return dev_err_probe(&pdev->dev, PTR_ERR(pci->wake_gpio),
++				     "failed to get wake GPIO\n");
++
+ 
+ 	pci->pcie3v3 = devm_regulator_get_optional(&pdev->dev, "pcie3v3");
+ 	if (IS_ERR(pci->pcie3v3))
