@@ -1,0 +1,422 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: QinCai-rui <git@qincai.xyz>
+Date: Mon, 26 Oct 2026 07:15:36 -0000
+Subject: [PATCH] PCI: sunxi: test host-stage link preservation
+
+Keep endpoint PERST unchanged until controller registers are accessible
+after PHY initialization. Preserve a live host link while rebuilding
+Linux address windows, and otherwise use one normal training attempt.
+Quiesce inherited IRQ delivery before installing Linux handlers.
+
+Bound Cadence PHY readiness waiting and unwind acquired resources on
+failure. Keep the tuning table and board supply settings unchanged.
+
+This opt-in diagnostic does not capture pristine U-Boot controller
+state: the existing PHY table still runs before the link snapshot.
+
+---
+diff --git a/bsp/drivers/pcie/pcie-sunxi-plat.c b/bsp/drivers/pcie/pcie-sunxi-plat.c
+--- a/bsp/drivers/pcie/pcie-sunxi-plat.c
++++ b/bsp/drivers/pcie/pcie-sunxi-plat.c
+@@ -38,7 +38,7 @@
+ #include "pcie-sunxi-dma.h"
+ #include "pcie-sunxi.h"
+ 
+-#define SUNXI_PCIE_MODULE_VERSION	"1.2.5-pcie-reset1"
++#define SUNXI_PCIE_MODULE_VERSION	"1.2.5-pcie-handoff1"
+ 
+ void sunxi_pcie_writel(u32 val, struct sunxi_pcie *pcie, u32 offset)
+ {
+@@ -397,6 +397,20 @@
+ }
+ EXPORT_SYMBOL_GPL(sunxi_pcie_plat_ltssm_disable);
+ 
++void sunxi_pcie_log_link(struct sunxi_pcie *pci, const char *stage)
++{
++	dev_info(pci->dev,
++		 "PCIe %s: LTSSM=%#x link=%#x control=%#x power=%d PERST#=%d WAKE#=%d\n",
++		 stage,
++		 (u32)(sunxi_pcie_readl_dbi(pci, PCIE_PORT_DEBUG0) & PCIE_LTSSM_STATE_MASK),
++		 sunxi_pcie_readl(pci, PCIE_LINK_STAT),
++		 sunxi_pcie_readl(pci, PCIE_LTSSM_CTRL),
++		 pci->power_gpio ? gpiod_get_value_cansleep(pci->power_gpio) : -1,
++		 pci->rst_gpio ? gpiod_get_raw_value_cansleep(pci->rst_gpio) : -1,
++		 pci->wake_gpio ? gpiod_get_raw_value_cansleep(pci->wake_gpio) : -1);
++}
++EXPORT_SYMBOL_GPL(sunxi_pcie_log_link);
++
+ static void sunxi_pcie_plat_irqpending(struct sunxi_pcie_port *pp)
+ {
+ 	struct sunxi_pcie *pcie = to_sunxi_pcie_from_pp(pp);
+@@ -414,6 +428,13 @@
+ 	val = sunxi_pcie_readl(pci, PCIE_INT_ENABLE_CLR);
+ 	val |= PCIE_LINK_INT_EN;
+ 	sunxi_pcie_writel(val, pci, PCIE_INT_ENABLE_CLR);
++}
++
++static void sunxi_pcie_plat_assert_reset(struct sunxi_pcie *pci)
++{
++	if (pci->drvdata->mode == SUNXI_PCIE_RC_TYPE && pci->rst_gpio &&
++	    gpiod_direction_output_raw(pci->rst_gpio, 0))
++		dev_warn(pci->dev, "failed to assert PERST# during power-off\n");
+ }
+ 
+ static int sunxi_pcie_plat_power_on(struct sunxi_pcie *pci)
+@@ -447,16 +468,20 @@
+ 			goto err_1v8;
+ 	}
+ 
+-	/* Keep PERST# asserted while the adapter supply and PHY become stable. */
++	/* Allow the adapter supply to settle before PHY initialization. */
+ 	if (pci->drvdata->mode == SUNXI_PCIE_RC_TYPE)
+ 		msleep(100);
+ 
+ 	return 0;
+ 
+ err_1v8:
++	sunxi_pcie_plat_assert_reset(pci);
+ 	if (pci->pcie1v8)
+ 		regulator_disable(pci->pcie1v8);
++	goto err_disable_3v3;
+ err_3v3:
++	sunxi_pcie_plat_assert_reset(pci);
++err_disable_3v3:
+ 	if (pci->pcie3v3)
+ 		regulator_disable(pci->pcie3v3);
+ 	dev_err_probe(dev, ret, "failed to power PCIe adapter\n");
+@@ -465,9 +490,7 @@
+ 
+ static void sunxi_pcie_plat_power_off(struct sunxi_pcie *pci)
+ {
+-	if (pci->drvdata->mode == SUNXI_PCIE_RC_TYPE && pci->rst_gpio &&
+-	    gpiod_set_raw_value_cansleep(pci->rst_gpio, 0))
+-		dev_warn(pci->dev, "failed to assert PERST# during power-off\n");
++	sunxi_pcie_plat_assert_reset(pci);
+ 	if (pci->power_gpio && gpiod_set_value_cansleep(pci->power_gpio, 0))
+ 		dev_warn(pci->dev, "failed to disable PCIe adapter power\n");
+ 	if (pci->pcie1v8)
+@@ -653,6 +676,9 @@
+ static irqreturn_t sunxi_pcie_plat_sii_handler(int irq, void *arg)
+ {
+ 	struct sunxi_pcie_port *pp = (struct sunxi_pcie_port *)arg;
++
++	if (!READ_ONCE(pp->intx_domain))
++		return IRQ_NONE;
+ 
+ 	sunxi_pcie_plat_sii_int0_handler(pp);
+ 
+@@ -969,6 +995,33 @@
+ 	return 0;
+ }
+ 
++static void sunxi_pcie_plat_mask_inherited_irqs(struct sunxi_pcie *pci)
++{
++	u32 mask;
++	int i;
++
++	if (pci->drvdata->mode != SUNXI_PCIE_RC_TYPE)
++		return;
++
++	/* Firmware may leave an active endpoint while Linux has no IRQ domains. */
++	mask = sunxi_pcie_readl(pci, SII_INT_MASK0);
++	mask &= ~(INTX_RX_ASSERT_MASK | INTX_RX_DEASSERT_MASK);
++	sunxi_pcie_writel(mask, pci, SII_INT_MASK0);
++	sunxi_pcie_writel(INTX_RX_ASSERT_MASK | INTX_RX_DEASSERT_MASK,
++			 pci, SII_INT_STAS0);
++	/* Flush posted writes before any Linux handler can run. */
++	sunxi_pcie_readl(pci, SII_INT_MASK0);
++
++	if (pci_msi_enabled() && !pci->pp.has_its) {
++		for (i = 0; i < MAX_MSI_CTRLS; i++) {
++			sunxi_pcie_writel_dbi(pci, PCIE_MSI_INTR_ENABLE(i), 0);
++			sunxi_pcie_writel_dbi(pci,
++				PCIE_MSI_INTR_STATUS + i * MSI_REG_CTRL_BLOCK_SIZE, U32_MAX);
++		}
++		sunxi_pcie_readl_dbi(pci, PCIE_MSI_INTR_ENABLE(MAX_MSI_CTRLS - 1));
++	}
++}
++
+ static void sunxi_pcie_plat_dma_deinit(struct sunxi_pcie *pci)
+ {
+ 	sunxi_pcie_dma_obj_remove(pci->dev);
+@@ -998,6 +1051,7 @@
+ 
+ 	pp->dbi_base = pci->dbi_base;
+ 	pci->app_base = pci->dbi_base + PCIE_USER_DEFINED_REGISTER;
++	pp->has_its = device_property_read_bool(&pdev->dev, "msi-map");
+ 
+ 	pci->link_gen = of_pci_get_max_link_speed(pdev->dev.of_node);
+ 	if (pci->link_gen < 0) {
+@@ -1071,12 +1125,16 @@
+ {
+ 	int ret;
+ 
+-	/* Resolve every resource before changing the bootloader's reset state. */
+-	if (pci->rst_gpio) {
+-		if (pci->drvdata->mode == SUNXI_PCIE_RC_TYPE)
+-			ret = gpiod_direction_output_raw(pci->rst_gpio, 0);
+-		else
+-			ret = gpiod_direction_output(pci->rst_gpio, 1);
++	pci->preserve_link = false;
++
++	/* Do not assert endpoint reset before checking for an existing link. */
++	if (pci->drvdata->mode == SUNXI_PCIE_RC_TYPE) {
++		dev_info(pci->dev, "PCIe entry GPIOs: power=%d PERST#=%d WAKE#=%d\n",
++			 pci->power_gpio ? gpiod_get_value_cansleep(pci->power_gpio) : -1,
++			 pci->rst_gpio ? gpiod_get_raw_value_cansleep(pci->rst_gpio) : -1,
++			 pci->wake_gpio ? gpiod_get_raw_value_cansleep(pci->wake_gpio) : -1);
++	} else if (pci->rst_gpio) {
++		ret = gpiod_direction_output(pci->rst_gpio, 1);
+ 		if (ret)
+ 			return dev_err_probe(pci->dev, ret, "failed to configure reset GPIO\n");
+ 	}
+@@ -1092,6 +1150,18 @@
+ 	ret = sunxi_pcie_plat_combo_phy_init(pci);
+ 	if (ret)
+ 		goto err1;
++
++	if (pci->drvdata->mode == SUNXI_PCIE_RC_TYPE) {
++		/* DBI access needs the clocks and PHY-side PCIe gate above. */
++		pci->pcie_cap = sunxi_pcie_plat_find_capability(pci, PCI_CAP_ID_EXP);
++		sunxi_pcie_log_link(pci, "post-PHY, before host reset");
++		dev_info(pci->dev, "PCIe clocks: aux=%lu slv=%lu its=%lu; supplies: 3v3=%d 1v8=%d uV\n",
++			 clk_get_rate(pci->pcie_aux),
++			 pci->drvdata->has_pcie_slv_clk ? clk_get_rate(pci->pcie_slv) : 0,
++			 pci->drvdata->has_pcie_its_clk ? clk_get_rate(pci->pcie_its) : 0,
++			 pci->pcie3v3 ? regulator_get_voltage(pci->pcie3v3) : -1,
++			 pci->pcie1v8 ? regulator_get_voltage(pci->pcie1v8) : -1);
++	}
+ 
+ 	return 0;
+ 
+@@ -1138,6 +1208,7 @@
+ 	if (ret)
+ 		return ret;
+ 
++	sunxi_pcie_plat_mask_inherited_irqs(pci);
+ 	sunxi_pcie_plat_set_irqmask(pci);
+ 	platform_set_drvdata(pdev, pci);
+ 
+diff --git a/bsp/drivers/pcie/pcie-sunxi-rc.c b/bsp/drivers/pcie/pcie-sunxi-rc.c
+--- a/bsp/drivers/pcie/pcie-sunxi-rc.c
++++ b/bsp/drivers/pcie/pcie-sunxi-rc.c
+@@ -529,7 +529,9 @@
+ 	phys_addr_t mem_base;
+ 	struct sunxi_pcie *pci = to_sunxi_pcie_from_pp(pp);
+ 
+-	sunxi_pcie_plat_set_rate(pci);
++	/* Keep negotiated lane and speed settings on a live firmware link. */
++	if (!pci->preserve_link)
++		sunxi_pcie_plat_set_rate(pci);
+ 
+ 	/* setup RC BARs */
+ 	sunxi_pcie_writel_dbi(pci, PCI_BASE_ADDRESS_0, 0x4);
+@@ -597,9 +599,11 @@
+ 	sunxi_pcie_dbi_ro_wr_dis(pci);
+ 
+ 	/* Request a speed change only after the initial data link is established. */
+-	sunxi_pcie_host_rd_own_conf(pp, PCIE_LINK_WIDTH_SPEED_CONTROL, 4, &val);
+-	val &= ~PORT_LOGIC_SPEED_CHANGE;
+-	sunxi_pcie_host_wr_own_conf(pp, PCIE_LINK_WIDTH_SPEED_CONTROL, 4, val);
++	if (!pci->preserve_link) {
++		sunxi_pcie_host_rd_own_conf(pp, PCIE_LINK_WIDTH_SPEED_CONTROL, 4, &val);
++		val &= ~PORT_LOGIC_SPEED_CHANGE;
++		sunxi_pcie_host_wr_own_conf(pp, PCIE_LINK_WIDTH_SPEED_CONTROL, 4, val);
++	}
+ }
+ EXPORT_SYMBOL_GPL(sunxi_pcie_host_setup_rc);
+ 
+@@ -704,7 +708,7 @@
+ 		sunxi_pcie_host_read_speed(pci);
+ 	else {
+ 		dev_warn(pci->dev, "PCIe link lost during speed change: LTSSM=%#x link=%#x\n",
+-			 sunxi_pcie_readl_dbi(pci, PCIE_PORT_DEBUG0) & PCIE_LTSSM_STATE_MASK,
++			 (u32)(sunxi_pcie_readl_dbi(pci, PCIE_PORT_DEBUG0) & PCIE_LTSSM_STATE_MASK),
+ 			 sunxi_pcie_readl(pci, PCIE_LINK_STAT));
+ 		if (!ret)
+ 			ret = -ENOLINK;
+@@ -717,6 +721,20 @@
+ 	struct sunxi_pcie *pci = to_sunxi_pcie_from_pp(pp);
+ 	int ret;
+ 
++	pci->preserve_link = pci->pcie_cap && sunxi_pcie_host_is_link_up(pp);
++	if (pci->preserve_link) {
++		/* Rebuild Linux address windows without stopping a working link. */
++		sunxi_pcie_host_setup_rc(pp);
++		msleep(100);
++		if (sunxi_pcie_host_is_link_up(pp)) {
++			sunxi_pcie_log_link(pci, "preserved existing host link");
++			sunxi_pcie_host_read_speed(pci);
++			return;
++		}
++		dev_warn(pci->dev, "PCIe existing link lost during host setup; training once\n");
++		pci->preserve_link = false;
++	}
++
+ 	sunxi_pcie_plat_ltssm_disable(pci);
+ 	sunxi_pcie_host_setup_rc(pp);
+ 
+@@ -737,7 +755,7 @@
+ 
+ 	val = sunxi_pcie_readl(pcie, PCIE_LINK_STAT);
+ 
+-	if ((val & RDLH_LINK_UP) && (val & SMLH_LINK_UP))
++	if (val != U32_MAX && (val & RDLH_LINK_UP) && (val & SMLH_LINK_UP))
+ 		ret = true;
+ 	else
+ 		ret = false;
+@@ -791,7 +809,7 @@
+ 
+ 	sunxi_pcie_plat_ltssm_disable(pci);
+ 	if (pci->rst_gpio) {
+-		ret = gpiod_set_raw_value_cansleep(pci->rst_gpio, 0);
++		ret = gpiod_direction_output_raw(pci->rst_gpio, 0);
+ 		if (ret)
+ 			return dev_err_probe(pci->dev, ret, "failed to assert PERST#\n");
+ 	}
+@@ -823,6 +841,9 @@
+ 	u32 status;
+ 	irqreturn_t ret = IRQ_NONE;
+ 
++	if (!READ_ONCE(pp->irq_domain))
++		return IRQ_NONE;
++
+ 	for (i = 0; i < MAX_MSI_CTRLS; i++) {
+ 		status = sunxi_pcie_readl_dbi(pci, PCIE_MSI_INTR_STATUS + (i * MSI_REG_CTRL_BLOCK_SIZE));
+ 
+@@ -856,8 +877,6 @@
+ 		sunxi_err(&pdev->dev, "failed to parse num-ob-windows\n");
+ 		return -EINVAL;
+ 	}
+-
+-	pp->has_its = device_property_read_bool(&pdev->dev, "msi-map");
+ 
+ 	if (pci_msi_enabled() && !pp->has_its) {
+ 		pp->msi_irq = platform_get_irq_byname(pdev, "msi");
+diff --git a/bsp/drivers/pcie/pcie-sunxi.h b/bsp/drivers/pcie/pcie-sunxi.h
+--- a/bsp/drivers/pcie/pcie-sunxi.h
++++ b/bsp/drivers/pcie/pcie-sunxi.h
+@@ -334,6 +334,7 @@
+ 	struct gpio_desc	*power_gpio;
+ 	u32			reset_deassert_ms;
+ 	u8			pcie_cap;
++	bool			preserve_link;
+ 	u32			lanes;
+ 	u32			num_edma;
+ 	unsigned long		*rd_edma_map;
+@@ -361,6 +362,7 @@
+ };
+ 
+ void sunxi_pcie_plat_set_rate(struct sunxi_pcie *pci);
++void sunxi_pcie_log_link(struct sunxi_pcie *pci, const char *stage);
+ void sunxi_pcie_write_dbi(struct sunxi_pcie *pci, u32 reg, size_t size, u32 val);
+ u32 sunxi_pcie_read_dbi(struct sunxi_pcie *pci, u32 reg, size_t size);
+ void sunxi_pcie_plat_ltssm_enable(struct sunxi_pcie *pci);
+diff --git a/bsp/drivers/phy/sunxi-cadence-combophy.c b/bsp/drivers/phy/sunxi-cadence-combophy.c
+--- a/bsp/drivers/phy/sunxi-cadence-combophy.c
++++ b/bsp/drivers/phy/sunxi-cadence-combophy.c
+@@ -10,6 +10,7 @@
+ #include <linux/clk.h>
+ #include <linux/delay.h>
+ #include <linux/io.h>
++#include <linux/iopoll.h>
+ #include <linux/kernel.h>
+ #include <linux/module.h>
+ #include <linux/of_address.h>
+@@ -3592,10 +3593,11 @@
+ 	.owner		= THIS_MODULE,
+ };
+ 
+-static void sunxi_cadence_phy_pcie_phy_init(struct sunxi_cadence_phy *sunxi_cphy)
++static int sunxi_cadence_phy_pcie_phy_init(struct sunxi_cadence_phy *sunxi_cphy)
+ {
+ 	struct sunxi_cadence_combophy *combo1 = sunxi_cphy->combo1;
+ 	u32 val;
++	int ret;
+ 
+ 	writel(0x01100001, combo1->top_reg + 0x4);
+ 
+@@ -3726,12 +3728,11 @@
+ 	val = readl(combo1->top_reg + 0x100);
+ 	writel(val | 0x1, combo1->top_reg + 0x100);
+ 
+-	val = readl(combo1->top_reg + 0x900);
+-	while (true) {
+-		udelay(100);
+-		val = readl(combo1->top_reg + 0x900);
+-		if (val & BIT(0))
+-			break;
++	ret = readl_poll_timeout(combo1->top_reg + 0x900, val,
++				 val != U32_MAX && (val & BIT(0)), 100, 500000);
++	if (ret) {
++		dev_err(sunxi_cphy->dev, "PCIe PHY not ready after 500 ms: status=%#x\n", val);
++		return ret;
+ 	}
+ 
+ 	val = readw(combo1->phy_reg + 0xa0);
+@@ -3752,6 +3753,7 @@
+ 	val |= BIT(28);
+ 	writel(val, combo1->top_reg + 0x4);
+ 
++	return 0;
+ }
+ 
+ static int sunxi_cadence_phy_combo1_pcie_init(struct sunxi_cadence_phy *sunxi_cphy)
+@@ -3769,10 +3771,13 @@
+ 
+ 	ret = clk_prepare_enable(sunxi_cphy->dcxo_serdes1_clk);
+ 	if (ret)
+-		return ret;
+-
+-	if (sunxi_cphy->serdes_reset)
+-		reset_control_deassert(sunxi_cphy->serdes_reset);
++		goto err_serdes_clk;
++
++	if (sunxi_cphy->serdes_reset) {
++		ret = reset_control_deassert(sunxi_cphy->serdes_reset);
++		if (ret)
++			goto err_dcxo_clk;
++	}
+ 
+ 	/* enable pcie */
+ 	val = readl(sunxi_cphy->top_subsys_reg + SUBSYS_PCIE_BGR);
+@@ -3785,9 +3790,28 @@
+ 	/* switch pipe to pcie */
+ 	writel(SUBSYS_COMB1_PIPE_PCIE, sunxi_cphy->top_combo_reg + SUBSYS_COMB1_PIPE);
+ 
+-	sunxi_cadence_phy_pcie_phy_init(sunxi_cphy);
++	dev_info(sunxi_cphy->dev, "PCIe PHY before tuning: ready=%#x refctrl=%#x serdes=%lu dcxo1=%lu\n",
++		 readl(sunxi_cphy->combo1->top_reg + 0x900),
++		 readl(sunxi_cphy->combo1->top_reg + 0x4),
++		 clk_get_rate(sunxi_cphy->serdes_clk),
++		 clk_get_rate(sunxi_cphy->dcxo_serdes1_clk));
++	ret = sunxi_cadence_phy_pcie_phy_init(sunxi_cphy);
++	if (ret)
++		goto err_reset;
++	dev_info(sunxi_cphy->dev, "PCIe PHY after tuning: ready=%#x refctrl=%#x\n",
++		 readl(sunxi_cphy->combo1->top_reg + 0x900),
++		 readl(sunxi_cphy->combo1->top_reg + 0x4));
+ 
+ 	return 0;
++
++err_reset:
++	if (sunxi_cphy->serdes_reset)
++		reset_control_assert(sunxi_cphy->serdes_reset);
++err_dcxo_clk:
++	clk_disable_unprepare(sunxi_cphy->dcxo_serdes1_clk);
++err_serdes_clk:
++	clk_disable_unprepare(sunxi_cphy->serdes_clk);
++	return ret;
+ }
+ 
+ static void sunxi_cadence_phy_combo1_pcie_exit(struct sunxi_cadence_phy *sunxi_cphy)
+@@ -3810,7 +3834,8 @@
+ 
+ 	ret = sunxi_cadence_phy_combo1_pcie_init(sunxi_cphy);
+ 
+-	combo1->mode |= (1 << PHY_TYPE_PCIE);
++	if (!ret)
++		combo1->mode |= (1 << PHY_TYPE_PCIE);
+ 
+ 	mutex_unlock(&combo1->phy_lock);
+ 
