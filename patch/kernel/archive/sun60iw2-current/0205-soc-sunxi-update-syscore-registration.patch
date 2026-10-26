@@ -1,0 +1,239 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: QinCai-rui <git@qincai.xyz>
+Date: Mon, 26 Oct 2026 06:00:00 +0000
+Subject: [PATCH] soc: sunxi: update BSP syscore registrations
+
+Replace syscore_ops registration with persistent struct syscore
+instances and add the callback data argument required by the new API.
+Keep the suspend and resume callback bodies unchanged.
+
+---
+diff --git a/bsp/drivers/clk/sunxi/clk-sun8iw21.c b/bsp/drivers/clk/sunxi/clk-sun8iw21.c
+--- a/bsp/drivers/clk/sunxi/clk-sun8iw21.c
++++ b/bsp/drivers/clk/sunxi/clk-sun8iw21.c
+@@ -992,7 +992,7 @@
+ }
+ 
+ #ifdef CONFIG_PM_SLEEP
+-static int sunxi_clk_suspend(void)
++static int sunxi_clk_suspend(void *data)
+ {
+ 	struct sunxi_factor_clk_reg_cache *factor_clk_reg;
+ 	struct sunxi_periph_clk_reg_cache *periph_clk_reg;
+@@ -1005,7 +1005,7 @@
+ 
+ 	return 0;
+ }
+-static void sunxi_clk_resume(void)
++static void sunxi_clk_resume(void *data)
+ {
+ 	struct sunxi_factor_clk_reg_cache *factor_clk_reg;
+ 	struct sunxi_periph_clk_reg_cache *periph_clk_reg;
+@@ -1017,9 +1017,13 @@
+ 		sunxi_periph_clk_restore(periph_clk_reg);
+ }
+ 
+-static struct syscore_ops sunxi_clk_syscore_ops = {
++static const struct syscore_ops sunxi_clk_syscore_ops = {
+ 	.suspend = sunxi_clk_suspend,
+ 	.resume = sunxi_clk_resume,
++};
++
++static struct syscore sunxi_clk_syscore = {
++	.ops = &sunxi_clk_syscore_ops,
+ };
+ #endif
+ 
+@@ -1063,7 +1067,7 @@
+ 	/*do some initialize arguments here*/
+ 	sunxi_clk_factor_initlimits();
+ #ifdef CONFIG_PM_SLEEP
+-	register_syscore_ops(&sunxi_clk_syscore_ops);
++	register_syscore(&sunxi_clk_syscore);
+ #endif
+ 	sunxi_set_periphs_clk_priv_ops("pll_audio", &pll_audio_priv_ops,
+ 			set_pll_audio_priv_ops);
+diff --git a/bsp/drivers/clk/sunxi-ng/ccu-displl.c b/bsp/drivers/clk/sunxi-ng/ccu-displl.c
+--- a/bsp/drivers/clk/sunxi-ng/ccu-displl.c
++++ b/bsp/drivers/clk/sunxi-ng/ccu-displl.c
+@@ -149,7 +149,7 @@
+ 
+ LIST_HEAD(displl_reg_cache_list);
+ 
+-static int displl_suspend(void)
++static int displl_suspend(void *data)
+ {
+ 	struct sunxi_displl_reg_cache *reg_cache;
+ 	int num_regs = 0;
+@@ -164,7 +164,7 @@
+ 	return 0;
+ }
+ 
+-static void displl_resume(void)
++static void displl_resume(void *data)
+ {
+ 	struct sunxi_displl_reg_cache *reg_cache;
+ 	int num_regs = 0;
+@@ -240,9 +240,13 @@
+ 	writel(val, ccu_cpu_base + 0x500);
+ }
+ 
+-static struct syscore_ops sunxi_displl_syscore_ops = {
++static const struct syscore_ops sunxi_displl_syscore_ops = {
+ 	.suspend = displl_suspend,
+ 	.resume = displl_resume,
++};
++
++static struct syscore sunxi_displl_syscore = {
++	.ops = &sunxi_displl_syscore_ops,
+ };
+ 
+ void static displl_sleep_init(void __iomem *reg_base,
+@@ -267,7 +271,7 @@
+ 	}
+ 
+ 	if (list_empty(&displl_reg_cache_list))
+-		register_syscore_ops(&sunxi_displl_syscore_ops);
++		register_syscore(&sunxi_displl_syscore);
+ 
+ 	reg_cache->reg_base = reg_base;
+ 	reg_cache->rd_num = nr_rdump;
+diff --git a/bsp/drivers/clk/sunxi-ng/ccu_common.c b/bsp/drivers/clk/sunxi-ng/ccu_common.c
+--- a/bsp/drivers/clk/sunxi-ng/ccu_common.c
++++ b/bsp/drivers/clk/sunxi-ng/ccu_common.c
+@@ -203,7 +203,7 @@
+ 	return rd;
+ }
+ 
+-static int ccu_suspend(void)
++static int ccu_suspend(void *data)
+ {
+ 	struct sunxi_clock_reg_cache *reg_cache;
+ 
+@@ -213,7 +213,7 @@
+ 	return 0;
+ }
+ 
+-static void ccu_resume(void)
++static void ccu_resume(void *data)
+ {
+ 	struct sunxi_clock_reg_cache *reg_cache;
+ 
+@@ -225,9 +225,13 @@
+ 	}
+ }
+ 
+-static struct syscore_ops sunxi_clk_syscore_ops = {
++static const struct syscore_ops sunxi_clk_syscore_ops = {
+ 	.suspend = ccu_suspend,
+ 	.resume = ccu_resume,
++};
++
++static struct syscore sunxi_clk_syscore = {
++	.ops = &sunxi_clk_syscore_ops,
+ };
+ #endif
+ 
+@@ -251,7 +255,7 @@
+ 
+ 	mutex_lock(&ccu_reg_cache_lock);
+ 	if (list_empty(&ccu_reg_cache_list))
+-		register_syscore_ops(&sunxi_clk_syscore_ops);
++		register_syscore(&sunxi_clk_syscore);
+ 
+ 	reg_cache->reg_base = reg_base;
+ 	reg_cache->rd_num = nr_rdump;
+diff --git a/bsp/drivers/dumpreg/dump_reg.c b/bsp/drivers/dumpreg/dump_reg.c
+--- a/bsp/drivers/dumpreg/dump_reg.c
++++ b/bsp/drivers/dumpreg/dump_reg.c
+@@ -804,7 +804,7 @@
+ 	return standby_dump_printk();
+ }
+ 
+-static int standby_dump_syscore_suspend(void)
++static int standby_dump_syscore_suspend(void *data)
+ {
+ 	int ret  = 0;
+ 
+@@ -826,7 +826,7 @@
+ 	return ret;
+ }
+ 
+-static void standby_dump_syscore_resume(void)
++static void standby_dump_syscore_resume(void *data)
+ {
+ 	int ret = 0;
+ 
+@@ -857,9 +857,13 @@
+ 	.resume_noirq = standby_dump_dev_resume_noirq,
+ };
+ 
+-static struct syscore_ops standby_dump_syscore = {
++static const struct syscore_ops standby_dump_syscore_ops = {
+ 	.suspend = standby_dump_syscore_suspend,
+ 	.resume  = standby_dump_syscore_resume,
++};
++
++static struct syscore standby_dump_syscore = {
++	.ops = &standby_dump_syscore_ops,
+ };
+ 
+ /**
+@@ -1124,7 +1128,7 @@
+ 	if (!standby_dump_buff)
+ 		dev_err(dev, "malloc memory failed.\n");
+ 
+-	register_syscore_ops(&standby_dump_syscore);
++	register_syscore(&standby_dump_syscore);
+ 
+ 	return 0;
+ error:
+diff --git a/bsp/drivers/irqchip/irq-sun8i-nmi.c b/bsp/drivers/irqchip/irq-sun8i-nmi.c
+--- a/bsp/drivers/irqchip/irq-sun8i-nmi.c
++++ b/bsp/drivers/irqchip/irq-sun8i-nmi.c
+@@ -150,20 +150,24 @@
+ static struct irq_chip_generic *sys_gc;
+ static const struct sunxi_sc_nmi_reg_offs *sys_reg_offs;
+ static uint32_t sys_vaule;
+-static int sunxi_nmi_suspend(void)
++static int sunxi_nmi_suspend(void *data)
+ {
+ 	sys_vaule = sunxi_sc_nmi_read(sys_gc, sys_reg_offs->enable);
+ 	return 0;
+ }
+ 
+-static void sunxi_nmi_resume(void)
++static void sunxi_nmi_resume(void *data)
+ {
+ 	sunxi_sc_nmi_write(sys_gc, sys_reg_offs->enable, sys_vaule);
+ }
+ 
+-static struct syscore_ops sunxi_nmi_syscore_ops = {
++static const struct syscore_ops sunxi_nmi_syscore_ops = {
+ 	.suspend = sunxi_nmi_suspend,
+ 	.resume = sunxi_nmi_resume,
++};
++
++static struct syscore sunxi_nmi_syscore = {
++	.ops = &sunxi_nmi_syscore_ops,
+ };
+ 
+ static int sunxi_sc_nmi_irq_init(struct device_node *node,
+@@ -237,7 +241,7 @@
+ 	sunxi_nmi_pad_control(node);
+ 	sys_gc = gc;
+ 	sys_reg_offs = reg_offs;
+-	register_syscore_ops(&sunxi_nmi_syscore_ops);
++	register_syscore(&sunxi_nmi_syscore);
+ 
+ 	irq_set_chained_handler_and_data(irq, sunxi_sc_nmi_handle_irq, domain);
+ 
+@@ -275,7 +279,7 @@
+ 	struct device_node *node = pdev->dev.of_node;
+ 	struct resource res;
+ 
+-	unregister_syscore_ops(&sunxi_nmi_syscore_ops);
++	unregister_syscore(&sunxi_nmi_syscore);
+ 	iounmap(sys_gc->reg_base);
+ 	of_address_to_resource(node, 0, &res);
+ 	release_mem_region(res.start, resource_size(&res));

@@ -1,0 +1,24 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: QinCai-rui <git@qincai.xyz>
+Date: Mon, 26 Oct 2026 06:00:00 +0000
+Subject: [PATCH] drm: sunxi: use the current client buffer cleanup API
+
+Replace the removed framebuffer deletion helper with
+drm_client_buffer_delete(). The replacement also unmaps the buffer,
+so remove the separate unmap call.
+
+---
+diff --git a/bsp/drivers/drm/sunxi_fbdev_platform.c b/bsp/drivers/drm/sunxi_fbdev_platform.c
+--- a/bsp/drivers/drm/sunxi_fbdev_platform.c
++++ b/bsp/drivers/drm/sunxi_fbdev_platform.c
+@@ -297,9 +297,7 @@
+ 	if (!info || !info->buffer)
+ 		return 0;
+ 
+-	drm_client_buffer_vunmap(info->buffer);
+-
+-	drm_client_framebuffer_delete(info->buffer);
++	drm_client_buffer_delete(info->buffer);
+ 	info->buffer = NULL;
+ 
+ 	info->state.base.fb = NULL;
