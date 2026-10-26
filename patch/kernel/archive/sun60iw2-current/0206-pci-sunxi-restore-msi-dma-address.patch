@@ -1,0 +1,22 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: QinCai-rui <git@qincai.xyz>
+Date: Mon, 26 Oct 2026 06:00:00 +0000
+Subject: [PATCH] PCI: sunxi: restore the allocated MSI DMA address on resume
+
+Resume reconstructs an MSI target from the port structure rather
+than restoring the DMA address allocated during probe. Program the
+saved MSI DMA address so resumed interrupts target the correct page.
+
+---
+diff --git a/bsp/drivers/pcie/pcie-sunxi-plat.c b/bsp/drivers/pcie/pcie-sunxi-plat.c
+--- a/bsp/drivers/pcie/pcie-sunxi-plat.c
++++ b/bsp/drivers/pcie/pcie-sunxi-plat.c
+@@ -1199,7 +1199,7 @@
+ 		sunxi_pcie_host_setup_rc(pp);
+ 
+ 		if (IS_ENABLED(CONFIG_PCI_MSI) && !pp->has_its) {
+-			phys_addr_t pa = ALIGN_DOWN(virt_to_phys(pp), SZ_4K);
++			dma_addr_t pa = pp->msi_data;
+ 			sunxi_pcie_host_wr_own_conf(pp, PCIE_MSI_ADDR_LO, 4, lower_32_bits(pa));
+ 			sunxi_pcie_host_wr_own_conf(pp, PCIE_MSI_ADDR_HI, 4, upper_32_bits(pa));
+ 		}
