@@ -1,0 +1,24 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: QinCai-rui <git@qincai.xyz>
+Date: Mon, 26 Oct 2026 06:00:00 +0000
+Subject: [PATCH] mmc: sunxi: accept nonnegative vqmmc voltage results
+
+mmc_regulator_set_vqmmc() can return a positive value when the
+voltage already satisfies the request. Treat only negative values as
+errors and preserve their original error codes.
+
+---
+diff --git a/drivers/mmc/host/sunxi-mmc.c b/drivers/mmc/host/sunxi-mmc.c
+--- a/drivers/mmc/host/sunxi-mmc.c
++++ b/drivers/mmc/host/sunxi-mmc.c
+@@ -985,8 +985,8 @@
+ 	/* vqmmc regulator is available */
+ 	if (!IS_ERR(mmc->supply.vqmmc)) {
+ 		ret = mmc_regulator_set_vqmmc(mmc, ios);
+-		if (ret)
+-			return -EIO;
++		if (ret < 0)
++			return ret;
+ 	}
+ 
+ 	switch (ios->signal_voltage) {

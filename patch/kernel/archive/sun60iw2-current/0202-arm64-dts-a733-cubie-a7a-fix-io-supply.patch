@@ -1,0 +1,77 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: QinCai-rui <git@qincai.xyz>
+Date: Mon, 26 Oct 2026 06:00:00 +0000
+Subject: [PATCH] arm64: dts: allwinner: fix Cubie A7A CLDO5 supply constraints
+
+CLDO5 supplies fixed 1.8 V rails, while SD signalling voltage is
+selected through the existing PF pinctrl states. Remove the MMC
+vqmmc claims and constrain CLDO5 to prevent incompatible requests.
+Update both maintained copies of the board device tree.
+
+---
+diff --git a/arch/arm64/boot/dts/allwinner/sun60i-a733-cubie-a7a.dts b/arch/arm64/boot/dts/allwinner/sun60i-a733-cubie-a7a.dts
+--- a/arch/arm64/boot/dts/allwinner/sun60i-a733-cubie-a7a.dts
++++ b/arch/arm64/boot/dts/allwinner/sun60i-a733-cubie-a7a.dts
+@@ -779,8 +779,8 @@
+ 	sd-uhs-sdr104;
+ 	no-sdio;
+ 	no-mmc;
++	/* PF signaling voltage is selected by the pinctrl states. */
+ 	vmmc-supply = <&reg_dc1sw2>;
+-	vqmmc-supply = <&reg_cldo5>;
+ 	max-frequency = <200000000>;
+ 	status = "okay";
+ };
+@@ -793,7 +793,6 @@
+ 	mmc-hs200-1_8v;
+ 	mmc-hs400-1_8v;
+ 	vmmc-supply = <&reg_dc1sw2>;
+-	vqmmc-supply = <&reg_cldo5>;
+ 	max-frequency = <200000000>;
+ 	status = "okay";
+ };
+@@ -1211,8 +1210,9 @@
+ 			};
+ 			reg_cldo5: cldo5 {
+ 				regulator-name = "axp8191-cldo5";
+-				regulator-min-microvolt = <500000>;
+-				regulator-max-microvolt = <3400000>;
++				/* Fixed 1.8 V for VCC18-PF, VCC-PC and AVDD-H-COMB0. */
++				regulator-min-microvolt = <1800000>;
++				regulator-max-microvolt = <1800000>;
+ 				regulator-enable-ramp-delay = <1000>;
+ 				regulator-boot-on;
+ 				regulator-always-on;
+diff --git a/bsp/configs/linux-6.18/sun60i-a733-cubie-a7a.dts b/bsp/configs/linux-6.18/sun60i-a733-cubie-a7a.dts
+--- a/bsp/configs/linux-6.18/sun60i-a733-cubie-a7a.dts
++++ b/bsp/configs/linux-6.18/sun60i-a733-cubie-a7a.dts
+@@ -779,8 +779,8 @@
+ 	sd-uhs-sdr104;
+ 	no-sdio;
+ 	no-mmc;
++	/* PF signaling voltage is selected by the pinctrl states. */
+ 	vmmc-supply = <&reg_dc1sw2>;
+-	vqmmc-supply = <&reg_cldo5>;
+ 	max-frequency = <200000000>;
+ 	status = "okay";
+ };
+@@ -793,7 +793,6 @@
+ 	mmc-hs200-1_8v;
+ 	mmc-hs400-1_8v;
+ 	vmmc-supply = <&reg_dc1sw2>;
+-	vqmmc-supply = <&reg_cldo5>;
+ 	max-frequency = <200000000>;
+ 	status = "okay";
+ };
+@@ -1211,8 +1210,9 @@
+ 			};
+ 			reg_cldo5: cldo5 {
+ 				regulator-name = "axp8191-cldo5";
+-				regulator-min-microvolt = <500000>;
+-				regulator-max-microvolt = <3400000>;
++				/* Fixed 1.8 V for VCC18-PF, VCC-PC and AVDD-H-COMB0. */
++				regulator-min-microvolt = <1800000>;
++				regulator-max-microvolt = <1800000>;
+ 				regulator-enable-ramp-delay = <1000>;
+ 				regulator-boot-on;
+ 				regulator-always-on;

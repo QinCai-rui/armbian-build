@@ -1,0 +1,41 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: QinCai-rui <git@qincai.xyz>
+Date: Mon, 26 Oct 2026 06:00:00 +0000
+Subject: [PATCH] mmc: sunxi: propagate signal-voltage pinctrl errors
+
+Do not report a successful signal-voltage switch when selecting
+the corresponding pin state fails. Return the pinctrl error so the
+MMC core can handle the failed transition.
+
+---
+diff --git a/drivers/mmc/host/sunxi-mmc.c b/drivers/mmc/host/sunxi-mmc.c
+--- a/drivers/mmc/host/sunxi-mmc.c
++++ b/drivers/mmc/host/sunxi-mmc.c
+@@ -993,19 +993,21 @@
+ 	case MMC_SIGNAL_VOLTAGE_330:
+ 		if (!IS_ERR(host->pins_default)) {
+ 			ret = pinctrl_select_state(host->pinctrl, host->pins_default);
+-			if (ret)
++			if (ret) {
+ 				dev_warn(mmc_dev(mmc), "Cannot select 3.3v pio mode\n");
+-			else
+-				dev_info(mmc_dev(mmc), "select 3.3v pio mode\n");
++				return ret;
++			}
++			dev_info(mmc_dev(mmc), "select 3.3v pio mode\n");
+ 		}
+ 		return 0;
+ 	case MMC_SIGNAL_VOLTAGE_180:
+ 		if (!IS_ERR(host->pins_bias_1v8)) {
+ 			ret = pinctrl_select_state(host->pinctrl, host->pins_bias_1v8);
+-			if (ret)
++			if (ret) {
+ 				dev_warn(mmc_dev(mmc), "Cannot select 1.8v pio mode\n");
+-			else
+-				dev_info(mmc_dev(mmc), "select 1.8v pio mode\n");
++				return ret;
++			}
++			dev_info(mmc_dev(mmc), "select 1.8v pio mode\n");
+ 		}
+ 		return 0;
+ 	default:
